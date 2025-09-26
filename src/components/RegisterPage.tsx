@@ -24,8 +24,10 @@ import {
   Github
 } from 'lucide-react';
 
+import { NavigatePath } from '../types';
+
 interface RegisterPageProps {
-  onNavigate: (page: Page) => void;
+  onNavigate: (path: NavigatePath) => void;
   onRegister: (userData: any) => void;
 }
 
@@ -149,7 +151,7 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
           {/* Back Button */}
           <Button
             variant="ghost"
-            onClick={() => onNavigate('landing')}
+            onClick={() => onNavigate('/')}
             className="mb-6 text-gray-600 hover:text-blue-600 p-2"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -473,7 +475,7 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
               <div className="text-center text-sm">
                 <span className="text-gray-600">Already have an account? </span>
                 <button
-                  onClick={() => onNavigate('login')}
+                  onClick={() => onNavigate('/login')}
                   className="text-blue-600 hover:underline font-medium"
                 >
                   Sign in here

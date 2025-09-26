@@ -26,8 +26,10 @@ import {
   LogOut
 } from 'lucide-react';
 
+import { NavigatePath } from '../types';
+
 interface PaymentPageProps {
-  onNavigate: (page: Page) => void;
+  onNavigate: (path: NavigatePath) => void;
   user: any;
   onLogout: () => void;
 }
@@ -157,14 +159,14 @@ export function PaymentPage({ onNavigate, user, onLogout }: PaymentPageProps) {
 
               <div className="space-y-3">
                 <Button 
-                  onClick={() => onNavigate('booking')}
+                  onClick={() => onNavigate('/booking')}
                   className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
                 >
                   Book Another Session
                 </Button>
                 <Button 
                   variant="outline" 
-                  onClick={() => onNavigate('landing')}
+                  onClick={() => onNavigate('/')}
                   className="w-full border-green-200 text-green-700 hover:bg-green-50"
                 >
                   Back to Dashboard
@@ -211,7 +213,7 @@ export function PaymentPage({ onNavigate, user, onLogout }: PaymentPageProps) {
         >
           <Button
             variant="ghost"
-            onClick={() => onNavigate('booking')}
+            onClick={() => onNavigate('/booking')}
             className="mb-4 text-gray-600 hover:text-blue-600"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

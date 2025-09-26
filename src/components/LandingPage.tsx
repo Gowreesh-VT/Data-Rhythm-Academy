@@ -23,8 +23,10 @@ import {
   Globe
 } from 'lucide-react';
 
+import { NavigatePath } from '../types';
+
 interface LandingPageProps {
-  onNavigate: (page: Page) => void;
+  onNavigate: (path: NavigatePath) => void;
   user: any;
   onLogout: () => void;
 }
@@ -295,15 +297,15 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               {user ? (
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600">Welcome, {user.name}</span>
-                  <Button variant="outline" onClick={() => onNavigate('booking')}>Dashboard</Button>
+                  <Button variant="outline" onClick={() => onNavigate('/booking')}>Dashboard</Button>
                   <Button variant="ghost" onClick={onLogout}>Logout</Button>
                 </div>
               ) : (
                 <>
-                  <Button variant="ghost" onClick={() => onNavigate('login')}>Sign In</Button>
+                  <Button variant="ghost" onClick={() => onNavigate('/login')}>Sign In</Button>
                   <Button 
                     className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
-                    onClick={() => onNavigate('register')}
+                    onClick={() => onNavigate('/register')}
                   >
                     Get Started
                   </Button>
@@ -335,7 +337,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
                 <Button 
                   size="lg"
                   className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-8 py-6 text-lg"
-                  onClick={() => onNavigate('register')}
+                  onClick={() => onNavigate('/register')}
                 >
                   Start Learning Today
                   <ArrowRight className="ml-2 w-5 h-5" />
@@ -516,7 +518,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
                     </CardDescription>
                     <Button 
                       className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
-                      onClick={() => onNavigate('register')}
+                      onClick={() => onNavigate('/register')}
                     >
                       Enroll Now
                     </Button>
@@ -644,7 +646,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
                     <Button 
                       className={`w-full mt-8 ${plan.popular ? 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white' : 'border-blue-200 text-blue-600 hover:bg-blue-50'}`}
                       variant={plan.popular ? 'default' : 'outline'}
-                      onClick={() => onNavigate('register')}
+                      onClick={() => onNavigate('/register')}
                     >
                       Get Started
                     </Button>

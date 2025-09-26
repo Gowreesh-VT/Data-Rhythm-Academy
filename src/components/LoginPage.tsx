@@ -7,7 +7,7 @@ import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Logo } from './ui/logo';
-import { Page } from '../types';
+import { NavigatePath } from '../types';
 import { 
   Eye, 
   EyeOff, 
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 interface LoginPageProps {
-  onNavigate: (page: Page) => void;
+  onNavigate: (path: NavigatePath) => void;
   onLogin: (userData: any) => void;
 }
 
@@ -71,7 +71,7 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
           {/* Back Button */}
           <Button
             variant="ghost"
-            onClick={() => onNavigate('landing')}
+            onClick={() => onNavigate('/')}
             className="mb-6 text-gray-600 hover:text-blue-600 p-2"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -195,7 +195,7 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
               <div className="text-center text-sm">
                 <span className="text-gray-600">Don't have an account? </span>
                 <button
-                  onClick={() => onNavigate('register')}
+                  onClick={() => onNavigate('/register')}
                   className="text-blue-600 hover:underline font-medium"
                 >
                   Sign up for free
