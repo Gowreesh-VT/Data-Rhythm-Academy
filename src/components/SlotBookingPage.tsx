@@ -141,7 +141,7 @@ export function SlotBookingPage({ onNavigate, user, onLogout }: SlotBookingPageP
             <div className="flex items-center space-x-3">
               <Logo size="md" className="text-blue-600" />
               <span className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                EduFlow
+                Data Rhythm Academy
               </span>
             </div>
             

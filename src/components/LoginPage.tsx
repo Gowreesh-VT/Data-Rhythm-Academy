@@ -82,7 +82,7 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
           <div className="flex items-center space-x-3 mb-8">
             <Logo size="lg" className="text-blue-600" />
             <span className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-              EduFlow
+              Data Rhythm Academy
             </span>
           </div>
 
@@ -227,17 +227,6 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
             </div>
 
             {/* Floating Stats Cards */}
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className="absolute top-8 -left-6 bg-white rounded-xl shadow-lg p-4 border border-blue-100"
-            >
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">50k+</div>
-                <div className="text-sm text-gray-600">Active Students</div>
-              </div>
-            </motion.div>
-
             <motion.div
               animate={{ y: [0, 10, 0] }}
               transition={{ duration: 3, repeat: Infinity, delay: 1.5 }}
