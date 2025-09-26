@@ -9,8 +9,9 @@ import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import { Logo } from './ui/logo';
+import { Page } from '../types';
 import { 
-  BookOpen, 
   CreditCard, 
   Shield, 
   Lock, 
@@ -26,7 +27,7 @@ import {
 } from 'lucide-react';
 
 interface PaymentPageProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: Page) => void;
   user: any;
   onLogout: () => void;
 }
@@ -182,10 +183,8 @@ export function PaymentPage({ onNavigate, user, onLogout }: PaymentPageProps) {
       <nav className="bg-white/80 backdrop-blur-md border-b border-blue-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
+            <div className="flex items-center space-x-3">
+              <Logo size="md" className="text-blue-600" />
               <span className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
                 EduFlow
               </span>
@@ -373,7 +372,7 @@ export function PaymentPage({ onNavigate, user, onLogout }: PaymentPageProps) {
                         <Checkbox
                           id="saveCard"
                           checked={formData.saveCard}
-                          onCheckedChange={(checked) => setFormData({ ...formData, saveCard: checked })}
+                          onCheckedChange={(checked: boolean) => setFormData({ ...formData, saveCard: checked })}
                         />
                         <Label htmlFor="saveCard" className="text-sm">
                           Save card for future payments
@@ -541,7 +540,7 @@ export function PaymentPage({ onNavigate, user, onLogout }: PaymentPageProps) {
                     <Checkbox
                       id="agreeTerms"
                       checked={formData.agreeTerms}
-                      onCheckedChange={(checked) => setFormData({ ...formData, agreeTerms: checked })}
+                      onCheckedChange={(checked: boolean) => setFormData({ ...formData, agreeTerms: checked })}
                       className="mt-1"
                     />
                     <Label htmlFor="agreeTerms" className="text-xs leading-relaxed">

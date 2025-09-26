@@ -4,13 +4,7 @@ import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
 import { SlotBookingPage } from "./components/SlotBookingPage";
 import { PaymentPage } from "./components/PaymentPage";
-
-type Page =
-  | "landing"
-  | "login"
-  | "register"
-  | "booking"
-  | "payment";
+import { Page } from "./types";
 
 export default function App() {
   const [currentPage, setCurrentPage] =

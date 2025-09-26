@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Logo } from './ui/logo';
+import { Page } from '../types';
 import { 
-  BookOpen, 
   Users, 
   Award, 
   Clock, 
@@ -23,7 +24,7 @@ import {
 } from 'lucide-react';
 
 interface LandingPageProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: Page) => void;
   user: any;
   onLogout: () => void;
 }
@@ -31,7 +32,7 @@ interface LandingPageProps {
 export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
   const features = [
     {
-      icon: <BookOpen className="w-8 h-8" />,
+      icon: <Logo size="xl" />,
       title: "Expert-Led Courses",
       description: "Learn from industry professionals with years of real-world experience"
     },
@@ -89,6 +90,114 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
       students: "3,156",
       duration: "10 weeks",
       image: "https://images.unsplash.com/photo-1748665194498-21a7e3d8ff19?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB3b3Jrc3BhY2UlMjBsYXB0b3B8ZW58MXx8fHwxNzU4NTE5OTM5fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+    },
+    {
+      title: "Mobile App Development",
+      description: "Build native iOS and Android apps using React Native and Flutter",
+      price: "$349",
+      rating: 4.7,
+      students: "1,654",
+      duration: "14 weeks",
+      image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+    },
+    {
+      title: "Cloud Computing & AWS",
+      description: "Master cloud architecture, deployment, and DevOps with Amazon Web Services",
+      price: "$429",
+      rating: 4.8,
+      students: "2,134",
+      duration: "18 weeks",
+      image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+    },
+    {
+      title: "Cybersecurity Fundamentals",
+      description: "Learn ethical hacking, network security, and cybersecurity best practices",
+      price: "$379",
+      rating: 4.9,
+      students: "1,789",
+      duration: "15 weeks",
+      image: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+    },
+    {
+      title: "Machine Learning & AI",
+      description: "Deep dive into ML algorithms, neural networks, and artificial intelligence",
+      price: "$449",
+      rating: 4.8,
+      students: "2,567",
+      duration: "20 weeks",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+    },
+    {
+      title: "Digital Marketing Mastery",
+      description: "Master SEO, social media marketing, PPC, and content marketing strategies",
+      price: "$199",
+      rating: 4.6,
+      students: "3,892",
+      duration: "8 weeks",
+      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+    },
+    {
+      title: "Blockchain Development",
+      description: "Build decentralized applications and smart contracts on Ethereum",
+      price: "$399",
+      rating: 4.7,
+      students: "1,234",
+      duration: "16 weeks",
+      image: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+    },
+    {
+      title: "Python Programming",
+      description: "Complete Python bootcamp from basics to advanced web scraping and automation",
+      price: "$199",
+      rating: 4.8,
+      students: "4,567",
+      duration: "10 weeks",
+      image: "https://images.unsplash.com/photo-1526379879527-8559ecfcaec0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+    },
+    {
+      title: "Game Development with Unity",
+      description: "Create 2D and 3D games using Unity engine and C# programming",
+      price: "$329",
+      rating: 4.7,
+      students: "1,890",
+      duration: "14 weeks",
+      image: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+    },
+    {
+      title: "Business Analytics",
+      description: "Learn data visualization, business intelligence, and decision-making with data",
+      price: "$279",
+      rating: 4.6,
+      students: "2,345",
+      duration: "12 weeks",
+      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+    },
+    {
+      title: "Project Management",
+      description: "Master Agile, Scrum, and traditional project management methodologies",
+      price: "$229",
+      rating: 4.5,
+      students: "3,234",
+      duration: "9 weeks",
+      image: "https://images.unsplash.com/photo-1552664730-d307ca884978?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+    },
+    {
+      title: "Graphic Design Pro",
+      description: "Master Adobe Creative Suite: Photoshop, Illustrator, and InDesign",
+      price: "$249",
+      rating: 4.7,
+      students: "2,789",
+      duration: "11 weeks",
+      image: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+    },
+    {
+      title: "E-commerce Business",
+      description: "Build and scale your online store with Shopify, dropshipping, and marketing",
+      price: "$299",
+      rating: 4.6,
+      students: "2,156",
+      duration: "10 weeks",
+      image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
     }
   ];
 
@@ -119,7 +228,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
   const pricingPlans = [
     {
       name: "Starter",
-      price: "$29",
+      price: "₹1000",
       period: "/month",
       description: "Perfect for individual learners",
       features: [
@@ -132,7 +241,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
     },
     {
       name: "Professional",
-      price: "$79",
+      price: "₹2500",
       period: "/month", 
       description: "Best for serious learners",
       features: [
@@ -147,7 +256,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
     },
     {
       name: "Enterprise",
-      price: "$199",
+      price: "₹5000",
       period: "/month",
       description: "For teams and organizations",
       features: [
@@ -168,12 +277,10 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-blue-100 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
+            <div className="flex items-center space-x-3">
+              <Logo size="md" className="text-blue-600" />
               <span className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                EduFlow
+                Data Rythym Academy
               </span>
             </div>
             
@@ -216,9 +323,6 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <Badge className="mb-4 bg-blue-100 text-blue-700 border-blue-200">
-                🚀 Over 50,000 students enrolled
-              </Badge>
               <h1 className="text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-blue-800 to-cyan-700 bg-clip-text text-transparent">
                 Master Skills That Matter
               </h1>
@@ -236,14 +340,14 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
                   Start Learning Today
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
-                <Button 
+                {/* <Button 
                   size="lg" 
                   variant="outline"
                   className="border-blue-200 text-blue-600 hover:bg-blue-50 px-8 py-6 text-lg"
                 >
                   <PlayCircle className="mr-2 w-5 h-5" />
                   Watch Demo
-                </Button>
+                </Button> */}
               </div>
 
               {/* Trust indicators */}
@@ -254,7 +358,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Users className="w-5 h-5" />
-                  <span>50k+ students</span>
+                  <span>Available in English and Tamil</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Award className="w-5 h-5" />
@@ -281,7 +385,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               <motion.div
                 animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 3, repeat: Infinity }}
-                className="absolute -top-6 -left-6 bg-white rounded-xl shadow-lg p-4 border border-blue-100"
+                className="absolute -top-10 -left-35 bg-white rounded-xl shadow-lg p-4 border border-blue-100"
               >
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-green-400 rounded-full"></div>
@@ -292,7 +396,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               <motion.div
                 animate={{ y: [0, 10, 0] }}
                 transition={{ duration: 3, repeat: Infinity, delay: 1.5 }}
-                className="absolute -bottom-6 -right-6 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg p-4 text-white"
+                className="absolute -bottom-15 right-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg p-4 text-white"
               >
                 <div className="flex items-center space-x-2">
                   <Award className="w-5 h-5" />
@@ -314,7 +418,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
             className="text-center mb-16"
           >
             <Badge className="mb-4 bg-cyan-100 text-cyan-700 border-cyan-200">
-              ✨ Why Choose EduFlow
+              ✨ Why Choose Data Rhythm Academy
             </Badge>
             <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent">
               Everything You Need to Succeed
@@ -440,7 +544,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               Hear From Our Alumni
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Real stories from students who transformed their careers with EduFlow
+              Real stories from students who transformed their careers with Data Rythym Academy.
             </p>
           </motion.div>
 
@@ -557,11 +661,9 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-semibold">EduFlow</span>
+              <div className="flex items-center space-x-3 mb-4">
+                <Logo size="md" className="text-blue-400" />
+                <span className="text-xl font-semibold">Data Rythym Academy</span>
               </div>
               <p className="text-gray-400 leading-relaxed">
                 Empowering learners worldwide with expert-led courses and personalized mentorship.
@@ -600,12 +702,12 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
           </div>
           
           <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400">© 2025 EduFlow. All rights reserved.</p>
+            <p className="text-gray-400">© 2025 Data Rythym Academy. All rights reserved.</p>
             <div className="flex items-center space-x-4 mt-4 md:mt-0">
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
                 <Globe className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="https://www.gowreesh.works" className="text-gray-400 hover:text-white transition-colors">
                 <Users className="w-5 h-5" />
               </a>
               <a href="#" className="text-gray-400 hover:text-white transition-colors">

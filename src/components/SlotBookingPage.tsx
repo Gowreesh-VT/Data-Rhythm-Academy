@@ -6,8 +6,9 @@ import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Calendar } from './ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Logo } from './ui/logo';
+import { Page } from '../types';
 import { 
-  BookOpen, 
   Calendar as CalendarIcon, 
   Clock, 
   User, 
@@ -22,7 +23,7 @@ import {
 } from 'lucide-react';
 
 interface SlotBookingPageProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: Page) => void;
   user: any;
   onLogout: () => void;
 }
@@ -135,10 +136,8 @@ export function SlotBookingPage({ onNavigate, user, onLogout }: SlotBookingPageP
       <nav className="bg-white/80 backdrop-blur-md border-b border-blue-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
+            <div className="flex items-center space-x-3">
+              <Logo size="md" className="text-blue-600" />
               <span className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
                 EduFlow
               </span>
@@ -320,7 +319,7 @@ export function SlotBookingPage({ onNavigate, user, onLogout }: SlotBookingPageP
                         mode="single"
                         selected={selectedDate}
                         onSelect={setSelectedDate}
-                        disabled={(date) => date < new Date() || date > new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}
+                        disabled={(date: Date) => date < new Date() || date > new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}
                         className="border rounded-md"
                       />
                     </div>

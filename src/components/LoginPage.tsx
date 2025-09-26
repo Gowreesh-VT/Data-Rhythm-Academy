@@ -6,8 +6,9 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Logo } from './ui/logo';
+import { Page } from '../types';
 import { 
-  BookOpen, 
   Eye, 
   EyeOff, 
   ArrowLeft,
@@ -18,7 +19,7 @@ import {
 } from 'lucide-react';
 
 interface LoginPageProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: Page) => void;
   onLogin: (userData: any) => void;
 }
 
@@ -78,10 +79,8 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
           </Button>
 
           {/* Logo */}
-          <div className="flex items-center space-x-2 mb-8">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
-            </div>
+          <div className="flex items-center space-x-3 mb-8">
+            <Logo size="lg" className="text-blue-600" />
             <span className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
               EduFlow
             </span>

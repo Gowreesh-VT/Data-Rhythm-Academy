@@ -9,8 +9,9 @@ import { Checkbox } from './ui/checkbox';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Logo } from './ui/logo';
+import { Page } from '../types';
 import { 
-  BookOpen, 
   User, 
   Mail, 
   Lock, 
@@ -24,7 +25,7 @@ import {
 } from 'lucide-react';
 
 interface RegisterPageProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: Page) => void;
   onRegister: (userData: any) => void;
 }
 
@@ -40,7 +41,7 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
     confirmPassword: '',
     course: '',
     experience: '',
-    goals: [],
+    goals: [] as string[],
     agreeTerms: false
   });
 
@@ -156,10 +157,8 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
           </Button>
 
           {/* Logo */}
-          <div className="flex items-center space-x-2 mb-8">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
-            </div>
+          <div className="flex items-center space-x-3 mb-8">
+            <Logo size="lg" className="text-blue-600" />
             <span className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
               EduFlow
             </span>
@@ -315,7 +314,7 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
                       <Checkbox
                         id="terms"
                         checked={formData.agreeTerms}
-                        onCheckedChange={(checked) => setFormData({ ...formData, agreeTerms: checked })}
+                        onCheckedChange={(checked: boolean) => setFormData({ ...formData, agreeTerms: checked })}
                       />
                       <Label htmlFor="terms" className="text-sm">
                         I agree to the{' '}
@@ -375,7 +374,7 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
 
                     <div className="space-y-2">
                       <Label>Experience Level</Label>
-                      <Select value={formData.experience} onValueChange={(value) => setFormData({ ...formData, experience: value })}>
+                      <Select value={formData.experience} onValueChange={(value: string) => setFormData({ ...formData, experience: value })}>
                         <SelectTrigger className="border-blue-200 focus:border-blue-400">
                           <SelectValue placeholder="Select your experience level" />
                         </SelectTrigger>
