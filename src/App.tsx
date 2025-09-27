@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
 import { LandingPage } from "./components/LandingPage";
 import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
@@ -81,55 +82,57 @@ export default function App() {
   };
 
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          <LandingPage
-            onNavigate={handleNavigate}
-            user={user}
-            onLogout={handleLogout}
-          />
-        }
-      />
-      <Route
-        path="/login"
-        element={
-          <LoginPage
-            onNavigate={handleNavigate}
-            onLogin={handleLogin}
-          />
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <RegisterPage
-            onNavigate={handleNavigate}
-            onRegister={handleRegister}
-          />
-        }
-      />
-      <Route
-        path="/booking"
-        element={
-          <SlotBookingPage
-            onNavigate={handleNavigate}
-            user={user}
-            onLogout={handleLogout}
-          />
-        }
-      />
-      <Route
-        path="/payment"
-        element={
-          <PaymentPage
-            onNavigate={handleNavigate}
-            user={user}
-            onLogout={handleLogout}
-          />
-        }
-      />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <LandingPage
+              onNavigate={handleNavigate}
+              user={user}
+              onLogout={handleLogout}
+            />
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <LoginPage
+              onNavigate={handleNavigate}
+              onLogin={handleLogin}
+            />
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <RegisterPage
+              onNavigate={handleNavigate}
+              onRegister={handleRegister}
+            />
+          }
+        />
+        <Route
+          path="/booking"
+          element={
+            <SlotBookingPage
+              onNavigate={handleNavigate}
+              user={user}
+              onLogout={handleLogout}
+            />
+          }
+        />
+        <Route
+          path="/payment"
+          element={
+            <PaymentPage
+              onNavigate={handleNavigate}
+              user={user}
+              onLogout={handleLogout}
+            />
+          }
+        />
+      </Routes>
+    </AuthProvider>
   );
 }

@@ -8,6 +8,7 @@ import { Separator } from './ui/separator';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Logo } from './ui/logo';
 import { NavigatePath } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   Eye, 
   EyeOff, 
@@ -15,7 +16,8 @@ import {
   Mail,
   Lock,
   Chrome,
-  Github
+  Github,
+  AlertCircle
 } from 'lucide-react';
 
 interface LoginPageProps {
@@ -30,32 +32,50 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
     password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { signIn, signInWithOAuth } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      onLogin({
-        name: formData.email.split('@')[0],
-        email: formData.email,
-        id: '1'
-      });
+    try {
+      const { data, error } = await signIn(formData.email, formData.password);
+      
+      if (error) {
+        setError(error.message);
+      } else if (data.user) {
+        // Successfully logged in
+        onLogin({
+          name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0],
+          email: data.user.email,
+          id: data.user.id
+        });
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
-  const handleSocialLogin = (provider: string) => {
+  const handleSocialLogin = async (provider: 'google' | 'github') => {
+    setError(null);
     setIsLoading(true);
-    setTimeout(() => {
-      onLogin({
-        name: `${provider} User`,
-        email: `user@${provider}.com`,
-        id: '1'
-      });
+    
+    try {
+      const { error } = await signInWithOAuth(provider);
+      
+      if (error) {
+        setError(error.message);
+        setIsLoading(false);
+      }
+      // Note: OAuth redirects will handle the success case
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -127,6 +147,14 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
                   </span>
                 </div>
               </div>
+
+              {/* Error Display */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center space-x-2 text-red-700">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm">{error}</span>
+                </div>
+              )}
 
               {/* Login Form */}
               <form onSubmit={handleSubmit} className="space-y-4">

@@ -11,6 +11,7 @@ import { Badge } from './ui/badge';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Logo } from './ui/logo';
 import { Page } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   User, 
   Mail, 
@@ -21,7 +22,8 @@ import {
   Eye,
   EyeOff,
   Chrome,
-  Github
+  Github,
+  AlertCircle
 } from 'lucide-react';
 
 import { NavigatePath } from '../types';
@@ -35,6 +37,8 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { signUp, signInWithOAuth } = useAuth();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -87,31 +91,71 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
   };
 
   const handleSubmit = async () => {
+    setError(null);
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      onRegister({
-        name: `${formData.firstName} ${formData.lastName}`,
-        email: formData.email,
-        course: formData.course,
-        id: '1'
-      });
+    // Validate password match
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
       setIsLoading(false);
-    }, 2000);
+      return;
+    }
+
+    // Validate password strength (basic)
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      const { data, error } = await signUp(
+        formData.email, 
+        formData.password,
+        {
+          full_name: `${formData.firstName} ${formData.lastName}`,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          course: formData.course,
+          experience: formData.experience,
+          learning_goals: formData.goals,
+        }
+      );
+      
+      if (error) {
+        setError(error.message);
+      } else if (data.user) {
+        // Successfully registered
+        onRegister({
+          name: `${formData.firstName} ${formData.lastName}`,
+          email: formData.email,
+          course: formData.course,
+          id: data.user.id
+        });
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSocialSignup = (provider: string) => {
+  const handleSocialSignup = async (provider: 'google' | 'github') => {
+    setError(null);
     setIsLoading(true);
-    setTimeout(() => {
-      onRegister({
-        name: `${provider} User`,
-        email: `user@${provider}.com`,
-        course: 'fullstack',
-        id: '1'
-      });
+    
+    try {
+      const { error } = await signInWithOAuth(provider);
+      
+      if (error) {
+        setError(error.message);
+        setIsLoading(false);
+      }
+      // Note: OAuth redirects will handle the success case
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const toggleGoal = (goal: string) => {
@@ -186,6 +230,14 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
             </CardHeader>
             
             <CardContent className="space-y-6">
+              {/* Error Display */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center space-x-2 text-red-700">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm">{error}</span>
+                </div>
+              )}
+
               <AnimatePresence mode="wait">
                 {/* Step 1: Basic Information */}
                 {step === 1 && (
