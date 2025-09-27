@@ -67,139 +67,94 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
 
   const courses = [
     {
-      title: "Full-Stack Web Development",
-      description: "Master React, Node.js, and MongoDB to build modern web applications",
-      price: "$299",
-      rating: 4.9,
-      students: "2,847",
-      duration: "12 weeks",
-      image: "https://images.unsplash.com/photo-1608986596619-eb50cc56831f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvbmxpbmUlMjBsZWFybmluZyUyMGVkdWNhdGlvbnxlbnwxfHx8fDE3NTg0Mjc5NzV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+      title: "Introduction To Python",
+      description: "Master Python programming from Basics and get started with programming",
+      price: "₹1000",
+      rating: 4.75,
+      students: "500",
+      duration: "4 weeks",
+      image: "https://images.unsplash.com/photo-1649180556628-9ba704115795?q=80&w=2062&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
-      title: "Data Science & Analytics",
-      description: "Learn Python, SQL, and machine learning to become a data scientist",
-      price: "$399", 
-      rating: 4.8,
-      students: "1,923",
-      duration: "16 weeks",
-      image: "https://images.unsplash.com/photo-1730382624709-81e52dd294d4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHN1Y2Nlc3MlMjBncm93dGh8ZW58MXx8fHwxNzU4NDc2MjM0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-    },
-    {
-      title: "UX/UI Design Mastery",
-      description: "Create beautiful and functional designs using Figma and design thinking",
-      price: "$249",
-      rating: 4.9,
-      students: "3,156",
-      duration: "10 weeks",
-      image: "https://images.unsplash.com/photo-1748665194498-21a7e3d8ff19?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB3b3Jrc3BhY2UlMjBsYXB0b3B8ZW58MXx8fHwxNzU4NTE5OTM5fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-    },
-    {
-      title: "Mobile App Development",
-      description: "Build native iOS and Android apps using React Native and Flutter",
-      price: "$349",
-      rating: 4.7,
-      students: "1,654",
-      duration: "14 weeks",
-      image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
-    },
-    {
-      title: "Cloud Computing & AWS",
-      description: "Master cloud architecture, deployment, and DevOps with Amazon Web Services",
-      price: "$429",
-      rating: 4.8,
-      students: "2,134",
-      duration: "18 weeks",
-      image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
-    },
-    {
-      title: "Cybersecurity Fundamentals",
-      description: "Learn ethical hacking, network security, and cybersecurity best practices",
-      price: "$379",
-      rating: 4.9,
-      students: "1,789",
-      duration: "15 weeks",
-      image: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
-    },
-    {
-      title: "Machine Learning & AI",
-      description: "Deep dive into ML algorithms, neural networks, and artificial intelligence",
-      price: "$449",
-      rating: 4.8,
-      students: "2,567",
-      duration: "20 weeks",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
-    },
-    {
-      title: "Digital Marketing Mastery",
-      description: "Master SEO, social media marketing, PPC, and content marketing strategies",
-      price: "$199",
-      rating: 4.6,
-      students: "3,892",
-      duration: "8 weeks",
-      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
-    },
-    {
-      title: "Blockchain Development",
-      description: "Build decentralized applications and smart contracts on Ethereum",
-      price: "$399",
-      rating: 4.7,
-      students: "1,234",
-      duration: "16 weeks",
-      image: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
-    },
-    {
-      title: "Python Programming",
+      title: "Python Programming Adv.",
       description: "Complete Python bootcamp from basics to advanced web scraping and automation",
       price: "$199",
       rating: 4.8,
       students: "4,567",
       duration: "10 weeks",
-      image: "https://images.unsplash.com/photo-1526379879527-8559ecfcaec0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+      image: "https://images.unsplash.com/photo-1526379879527-8559ecfcaec0?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
-      title: "Game Development with Unity",
-      description: "Create 2D and 3D games using Unity engine and C# programming",
+      title: "Front-End Web Development",
+      description: "Create beautiful and functional designs using JavaScript, React, and responsive design",
+      price: "$249",
+      rating: 4.9,
+      students: "3,156",
+      duration: "10 weeks",
+      image: "https://images.unsplash.com/photo-1593720213428-28a5b9e94613?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+    },
+    {
+      title: "Back-End Development",
+      description: "Build robust server-side applications with Node.js and Express and databases",
+      price: "$349",
+      rating: 4.7,
+      students: "1,654",
+      duration: "14 weeks",
+      image: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=2034&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+    },
+    {
+      title: "Full-Stack Development",
+      description: "Design and develop complete web applications using the MERN stack",
+      price: "$429",
+      rating: 4.8,
+      students: "2,134",
+      duration: "18 weeks",
+      image: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+    },
+    {
+      title: "Foundation in Machine Learning",
+      description: "Deep dive into ML algorithms, neural networks, and artificial intelligence",
+      price: "$449",
+      rating: 4.8,
+      students: "2,567",
+      duration: "20 weeks",
+      image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2062&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+    },
+    {
+      title: "Data Science and Analytics",
+      description: "Comprehensive data science course with Python, R, and real-world datasets",
       price: "$329",
       rating: 4.7,
       students: "1,890",
       duration: "14 weeks",
-      image: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
-      title: "Business Analytics",
-      description: "Learn data visualization, business intelligence, and decision-making with data",
+      title: "Foundations in Deep Learning",
+      description: "Hands-on deep learning with TensorFlow, Keras, and real-world projects",
       price: "$279",
       rating: 4.6,
       students: "2,345",
       duration: "12 weeks",
-      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
-      title: "Project Management",
-      description: "Master Agile, Scrum, and traditional project management methodologies",
+      title: "DSA in Python",
+      description: "Comprehensive guide to data structures and algorithms using Python",
       price: "$229",
       rating: 4.5,
       students: "3,234",
       duration: "9 weeks",
-      image: "https://images.unsplash.com/photo-1552664730-d307ca884978?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+      image: "https://images.unsplash.com/photo-1518186285589-2f7649de83e0?q=80&w=2074&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
-      title: "Graphic Design Pro",
-      description: "Master Adobe Creative Suite: Photoshop, Illustrator, and InDesign",
+      title: "Introduction to SQL",
+      description: "Master SQL for data analysis and manipulation",
       price: "$249",
       rating: 4.7,
       students: "2,789",
       duration: "11 weeks",
-      image: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
-    },
-    {
-      title: "E-commerce Business",
-      description: "Build and scale your online store with Shopify, dropshipping, and marketing",
-      price: "$299",
-      rating: 4.6,
-      students: "2,156",
-      duration: "10 weeks",
-      image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+      image: "https://images.unsplash.com/photo-1544383835-bda2bc66a55d?q=80&w=2021&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     }
   ];
 
