@@ -30,13 +30,13 @@ export const authHelpers = {
 
   // Sign in with OAuth (Google, GitHub, etc.)
   signInWithOAuth: async (provider: 'google' | 'github') => {
-    // Get the current URL, accounting for GitHub Pages base path
-    const redirectUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+    // For GitHub Pages, use the exact base URL
+    const baseUrl = window.location.origin + '/Data-Rhythm-Academy/';
     
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: redirectUrl
+        redirectTo: baseUrl
       }
     })
     return { data, error }
@@ -61,9 +61,9 @@ export const authHelpers = {
 
   // Reset password
   resetPassword: async (email: string) => {
-    const redirectUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+    const baseUrl = window.location.origin + '/Data-Rhythm-Academy/';
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${redirectUrl}reset-password`
+      redirectTo: `${baseUrl}reset-password`
     })
     return { data, error }
   }

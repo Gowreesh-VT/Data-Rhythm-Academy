@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LandingPage } from "./components/LandingPage";
 import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
 import { SlotBookingPage } from "./components/SlotBookingPage";
 import { PaymentPage } from "./components/PaymentPage";
 
-export default function App() {
-  const [user, setUser] = useState<any>(null);
+function AppContent() {
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -67,72 +67,96 @@ export default function App() {
   };
 
   const handleLogin = (userData: any) => {
-    setUser(userData);
+    // Navigation will be handled by auth state change
     navigate("/booking");
   };
 
   const handleRegister = (userData: any) => {
-    setUser(userData);
+    // Navigation will be handled by auth state change
     navigate("/booking");
   };
 
-  const handleLogout = () => {
-    setUser(null);
+  const handleLogout = async () => {
+    await signOut();
     navigate("/");
   };
 
+  // Auto-redirect authenticated users from login/register pages
+  useEffect(() => {
+    if (user && (location.pathname === '/login' || location.pathname === '/register')) {
+      navigate('/booking');
+    }
+  }, [user, location.pathname, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <LandingPage
+            onNavigate={handleNavigate}
+            user={user}
+            onLogout={handleLogout}
+          />
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <LoginPage
+            onNavigate={handleNavigate}
+            onLogin={handleLogin}
+          />
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <RegisterPage
+            onNavigate={handleNavigate}
+            onRegister={handleRegister}
+          />
+        }
+      />
+      <Route
+        path="/booking"
+        element={
+          <SlotBookingPage
+            onNavigate={handleNavigate}
+            user={user}
+            onLogout={handleLogout}
+          />
+        }
+      />
+      <Route
+        path="/payment"
+        element={
+          <PaymentPage
+            onNavigate={handleNavigate}
+            user={user}
+            onLogout={handleLogout}
+          />
+        }
+      />
+    </Routes>
+  );
+}
+
+export default function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <LandingPage
-              onNavigate={handleNavigate}
-              user={user}
-              onLogout={handleLogout}
-            />
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            <LoginPage
-              onNavigate={handleNavigate}
-              onLogin={handleLogin}
-            />
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <RegisterPage
-              onNavigate={handleNavigate}
-              onRegister={handleRegister}
-            />
-          }
-        />
-        <Route
-          path="/booking"
-          element={
-            <SlotBookingPage
-              onNavigate={handleNavigate}
-              user={user}
-              onLogout={handleLogout}
-            />
-          }
-        />
-        <Route
-          path="/payment"
-          element={
-            <PaymentPage
-              onNavigate={handleNavigate}
-              user={user}
-              onLogout={handleLogout}
-            />
-          }
-        />
-      </Routes>
+      <AppContent />
     </AuthProvider>
   );
 }
