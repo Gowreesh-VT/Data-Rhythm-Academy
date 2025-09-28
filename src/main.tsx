@@ -5,7 +5,7 @@
   import "./index.css";
 
   createRoot(document.getElementById("root")!).render(
-    <BrowserRouter>
+    <BrowserRouter basename="/Data-Rhythm-Academy">
       <App />
     </BrowserRouter>
   );
