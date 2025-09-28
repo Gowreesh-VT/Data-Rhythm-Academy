@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 
-// These should be replaced with your actual Supabase project URL and anon key
 const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || 'https://tswlsaxirijqvklfoioo.supabase.co'
 const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzd2xzYXhpcmlqcXZrbGZvaW9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5OTUwMDEsImV4cCI6MjA3NDU3MTAwMX0.CPwNFZRDefMmny_DRKzlEjFvQ4965ln3CwFtblzBtXU'
 
@@ -31,10 +30,13 @@ export const authHelpers = {
 
   // Sign in with OAuth (Google, GitHub, etc.)
   signInWithOAuth: async (provider: 'google' | 'github') => {
+    // Get the current URL, accounting for GitHub Pages base path
+    const redirectUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+    
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/`
+        redirectTo: redirectUrl
       }
     })
     return { data, error }
@@ -59,8 +61,9 @@ export const authHelpers = {
 
   // Reset password
   resetPassword: async (email: string) => {
+    const redirectUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`
+      redirectTo: `${redirectUrl}reset-password`
     })
     return { data, error }
   }
