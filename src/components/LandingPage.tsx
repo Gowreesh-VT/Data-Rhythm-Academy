@@ -234,12 +234,15 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-blue-100 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
+            <button 
+              onClick={() => onNavigate('/')}
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer"
+            >
               <Logo size="md" className="text-blue-600" />
               <span className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
                 Data Rythym Academy
               </span>
-            </div>
+            </button>
             
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">Features</a>
@@ -651,7 +654,14 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-gray-400">
                 <li><a href="#" className="hover:text-white transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/privacy')} 
+                    className="hover:text-white transition-colors text-left"
+                  >
+                    Privacy Policy
+                  </button>
+                </li>
                 <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Refund Policy</a></li>
               </ul>

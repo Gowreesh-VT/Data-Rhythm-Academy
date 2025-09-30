@@ -6,6 +6,7 @@ import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
 import { SlotBookingPage } from "./components/SlotBookingPage";
 import { PaymentPage } from "./components/PaymentPage";
+import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
 
 function AppContent() {
   const { user, loading, signOut } = useAuth();
@@ -146,6 +147,14 @@ function AppContent() {
             onNavigate={handleNavigate}
             user={user}
             onLogout={handleLogout}
+          />
+        }
+      />
+      <Route
+        path="/privacy"
+        element={
+          <PrivacyPolicyPage
+            onNavigate={handleNavigate}
           />
         }
       />

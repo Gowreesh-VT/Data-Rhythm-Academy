@@ -138,12 +138,15 @@ export function SlotBookingPage({ onNavigate, user, onLogout }: SlotBookingPageP
       <nav className="bg-white/80 backdrop-blur-md border-b border-blue-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
+            <button
+              onClick={() => onNavigate('/')}
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer"
+            >
               <Logo size="md" className="text-blue-600" />
               <span className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
                 Data Rhythm Academy
               </span>
-            </div>
+            </button>
             
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {user?.name}</span>

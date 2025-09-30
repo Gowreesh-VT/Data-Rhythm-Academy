@@ -99,12 +99,15 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
           </Button>
 
           {/* Logo */}
-          <div className="flex items-center space-x-3 mb-8">
+          <button
+            onClick={() => onNavigate('/')}
+            className="flex items-center space-x-3 mb-8 hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <Logo size="lg" className="text-blue-600" />
             <span className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
               Data Rhythm Academy
             </span>
-          </div>
+          </button>
 
           <Card className="border-blue-100 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader className="space-y-1">
@@ -227,6 +230,16 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
                   className="text-blue-600 hover:underline font-medium"
                 >
                   Sign up for free
+                </button>
+              </div>
+
+              <div className="text-center text-xs text-gray-500 mt-4">
+                By signing in, you agree to our{' '}
+                <button
+                  onClick={() => onNavigate('/privacy')}
+                  className="text-blue-600 hover:underline"
+                >
+                  Privacy Policy
                 </button>
               </div>
             </CardContent>

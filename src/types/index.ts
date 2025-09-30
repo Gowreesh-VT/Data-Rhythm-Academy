@@ -3,7 +3,8 @@ export type Page =
   | "login"
   | "register"
   | "booking"
-  | "payment";
+  | "payment"
+  | "privacy";
 
 // New path-based navigation type
 export type NavigatePath = 
@@ -11,4 +12,5 @@ export type NavigatePath =
   | "/login" 
   | "/register"
   | "/booking"
-  | "/payment";
+  | "/payment"
+  | "/privacy";
