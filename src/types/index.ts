@@ -4,13 +4,37 @@ export type Page =
   | "register"
   | "booking"
   | "payment"
-  | "privacy";
+  | "privacy"
+  | "courses"
+  | "course-detail"
+  | "dashboard"
+  | "admin";
 
 // New path-based navigation type
 export type NavigatePath = 
   | "/"
   | "/login" 
   | "/register"
+  | "/setup"
   | "/booking"
   | "/payment"
-  | "/privacy";
+  | "/privacy"
+  | "/courses"
+  | "/course-detail"
+  | "/dashboard"
+  | "/admin";
+
+// User roles
+export type UserRole = 'student' | 'admin' | 'super_admin';
+
+// Extended user interface with role
+export interface AppUser {
+  uid: string;
+  email: string;
+  name: string;
+  photoURL?: string;
+  role: UserRole;
+  provider?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
