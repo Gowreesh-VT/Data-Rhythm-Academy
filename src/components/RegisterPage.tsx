@@ -109,6 +109,7 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
     }
     
     try {
+      console.log('Attempting to register user with email:', formData.email);
       const { data, error } = await signUp(
         formData.email, 
         formData.password,
@@ -123,18 +124,16 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
       );
       
       if (error) {
-        setError(error.message);
-      } else if (data.user) {
-        // Successfully registered
-        onRegister({
-          name: `${formData.firstName} ${formData.lastName}`,
-          email: formData.email,
-          course: formData.course,
-          id: data.user.id
-        });
+        console.error('Registration error:', error);
+        setError(`Registration failed: ${error.message}`);
+      } else if (data?.user) {
+        console.log('Registration successful:', data.user);
+        // Don't call onRegister - let auth state change handle navigation
+        // The AuthContext will create the user profile and handle navigation
       }
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+    } catch (err: any) {
+      console.error('Unexpected registration error:', err);
+      setError(`An unexpected error occurred: ${err.message || 'Please try again.'}`);
     } finally {
       setIsLoading(false);
     }
@@ -375,13 +374,11 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
                       />
                       <Label htmlFor="terms" className="text-sm">
                         I agree to the{' '}
-                        <a href="#" className="text-blue-600 hover:underline">
-                          Terms of Service
-                        </a>{' '}
-                        and{' '}
-                        <a href="#" className="text-blue-600 hover:underline">
+                        <button 
+                          onClick={() => onNavigate('/privacy')}
+                          className="text-blue-600 hover:underline">
                           Privacy Policy
-                        </a>
+                        </button>
                       </Label>
                     </div>
                   </motion.div>
@@ -534,16 +531,6 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
                   className="text-blue-600 hover:underline font-medium"
                 >
                   Sign in here
-                </button>
-              </div>
-
-              <div className="text-center text-xs text-gray-500 mt-4">
-                By creating an account, you agree to our{' '}
-                <button
-                  onClick={() => onNavigate('/privacy')}
-                  className="text-blue-600 hover:underline"
-                >
-                  Privacy Policy
                 </button>
               </div>
             </CardContent>

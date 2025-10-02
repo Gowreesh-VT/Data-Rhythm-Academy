@@ -23,7 +23,7 @@ export function Logo({ className = "", size = "md" }: LogoProps) {
       x="0px"
       y="0px"
       viewBox="0 0 938 628"
-      enable-background="new 0 0 938 628"
+      enableBackground="new 0 0 938 628"
       xmlSpace="preserve"
     >
       <path
