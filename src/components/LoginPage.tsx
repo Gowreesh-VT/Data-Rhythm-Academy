@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -9,7 +9,6 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Logo } from './ui/logo';
 import { NavigatePath } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { DebugPanel } from './DebugPanel';
 import { 
   Eye, 
   EyeOff, 
@@ -36,63 +35,27 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
   const [error, setError] = useState<string | null>(null);
   const { signIn, signInWithOAuth } = useAuth();
 
-  // Debug component mount
-  useEffect(() => {
-    console.log('=== LoginPage mounted ===');
-    console.log('Auth functions available:', {
-      signIn: typeof signIn,
-      signInWithOAuth: typeof signInWithOAuth
-    });
-  }, [signIn, signInWithOAuth]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('=== LOGIN FORM SUBMITTED ===');
-    console.log('Form data:', formData);
-    console.log('useAuth hook:', { signIn: typeof signIn, signInWithOAuth: typeof signInWithOAuth });
-    
     setError(null);
     setIsLoading(true);
-    console.log('Loading state set to true');
-    
-    // Add timeout to prevent hanging
-    const timeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Login timeout - please check your connection')), 30000)
-    );
     
     try {
-      console.log('About to call signIn with email:', formData.email);
-      console.log('Password length:', formData.password.length);
-      console.log('Firebase config check:', {
-        authDomain: 'data-rhythm-academy.firebaseapp.com',
-        currentHost: window.location.hostname
-      });
-      
-      // Race between signIn and timeout
-      const result = await Promise.race([
-        signIn(formData.email, formData.password),
-        timeout
-      ]) as any;
-      
-      console.log('SignIn result:', result);
-      const { data, error } = result;
+      const { data, error } = await signIn(formData.email, formData.password);
       
       if (error) {
-        console.error('Login error:', error);
         setError(error.message);
-      } else if (data?.user) {
-        console.log('Login successful:', data.user);
-        // Don't call onLogin - let auth state change handle navigation
-        // Navigation will be handled automatically by auth state change in App.tsx
-      } else {
-        console.warn('No error but no user data either:', result);
-        setError('Login failed - no user data received');
+      } else if (data.user) {
+        // Successfully logged in
+        onLogin({
+          name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0],
+          email: data.user.email,
+          id: data.user.id
+        });
       }
-    } catch (err: any) {
-      console.error('Unexpected login error:', err);
-      setError(`An unexpected error occurred: ${err.message || 'Please try again.'}`);
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
     } finally {
-      console.log('Setting loading to false');
       setIsLoading(false);
     }
   };
@@ -145,9 +108,6 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
               Data Rhythm Academy
             </span>
           </button>
-
-          {/* Debug Panel - Remove after testing */}
-          <DebugPanel />
 
           <Card className="border-blue-100 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader className="space-y-1">
@@ -275,7 +235,7 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
 
               <div className="text-center text-xs text-gray-500 mt-4">
                 By signing in, you agree to our{' '}
-                <button 
+                <button
                   onClick={() => onNavigate('/privacy')}
                   className="text-blue-600 hover:underline"
                 >

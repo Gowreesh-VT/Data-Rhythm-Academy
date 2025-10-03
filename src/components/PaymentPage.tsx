@@ -5,15 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
-import { type NavigatePath } from '../types';
-import { type Course } from '../data/coursesData';
-
-interface PaymentPageProps {
-  onNavigate: (path: NavigatePath) => void;
-  user: any;
-  onLogout: () => void;
-  courseData?: Course | null;
-}
 import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
@@ -35,7 +26,15 @@ import {
   LogOut
 } from 'lucide-react';
 
-export function PaymentPage({ onNavigate, user, onLogout, courseData }: PaymentPageProps) {
+import { NavigatePath } from '../types';
+
+interface PaymentPageProps {
+  onNavigate: (path: NavigatePath) => void;
+  user: any;
+  onLogout: () => void;
+}
+
+export function PaymentPage({ onNavigate, user, onLogout }: PaymentPageProps) {
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);

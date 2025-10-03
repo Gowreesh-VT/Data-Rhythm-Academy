@@ -7,19 +7,11 @@ import { RegisterPage } from "./components/RegisterPage";
 import { SlotBookingPage } from "./components/SlotBookingPage";
 import { PaymentPage } from "./components/PaymentPage";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
-import { CoursesPage } from "./components/CoursesPage";
-import { CourseDetailPage } from "./components/CourseDetailPage";
-import { StudentDashboard } from "./components/StudentDashboard";
-import { AdminDashboard } from "./components/AdminDashboard";
-import { AdminSetup } from "./components/AdminSetup";
-import { type Course } from "./data/coursesData";
-import { type NavigatePath } from "./types";
 
 function AppContent() {
-  const { user, userProfile, loading, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [courseData, setCourseData] = useState<Course | null>(null);
 
   // Add swipe gesture support for mobile devices
   useEffect(() => {
@@ -71,21 +63,18 @@ function AppContent() {
     };
   }, [navigate]);
 
-  const handleNavigate = (path: NavigatePath, data?: any) => {
-    if (data && path === '/course-detail') {
-      setCourseData(data as Course);
-    } else if (data && path === '/payment') {
-      setCourseData(data as Course);
-    }
+  const handleNavigate = (path: string) => {
     navigate(path);
   };
 
   const handleLogin = (userData: any) => {
-    // Navigation will be handled by auth state change and role-based routing
+    // Navigation will be handled by auth state change
+    navigate("/booking");
   };
 
   const handleRegister = (userData: any) => {
-    // Navigation will be handled by auth state change and role-based routing
+    // Navigation will be handled by auth state change
+    navigate("/booking");
   };
 
   const handleLogout = async () => {
@@ -93,23 +82,12 @@ function AppContent() {
     navigate("/");
   };
 
-  // Auto-redirect authenticated users based on their role
+  // Auto-redirect authenticated users from login/register pages
   useEffect(() => {
-    if (userProfile && (location.pathname === '/login' || location.pathname === '/register')) {
-      // Route based on user role
-      if (userProfile.role === 'super_admin' || userProfile.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
-      }
+    if (user && (location.pathname === '/login' || location.pathname === '/register')) {
+      navigate('/booking');
     }
-  }, [userProfile, location.pathname, navigate]);
-
-  // Role-based dashboard routing
-  const getDashboardPath = () => {
-    if (!userProfile) return '/dashboard';
-    return (userProfile.role === 'super_admin' || userProfile.role === 'admin') ? '/admin' : '/dashboard';
-  };
+  }, [user, location.pathname, navigate]);
 
   if (loading) {
     return (
@@ -129,7 +107,7 @@ function AppContent() {
         element={
           <LandingPage
             onNavigate={handleNavigate}
-            user={userProfile}
+            user={user}
             onLogout={handleLogout}
           />
         }
@@ -153,15 +131,11 @@ function AppContent() {
         }
       />
       <Route
-        path="/setup"
-        element={<AdminSetup />}
-      />
-      <Route
         path="/booking"
         element={
           <SlotBookingPage
             onNavigate={handleNavigate}
-            user={userProfile}
+            user={user}
             onLogout={handleLogout}
           />
         }
@@ -171,9 +145,8 @@ function AppContent() {
         element={
           <PaymentPage
             onNavigate={handleNavigate}
-            user={userProfile}
+            user={user}
             onLogout={handleLogout}
-            courseData={courseData}
           />
         }
       />
@@ -182,47 +155,6 @@ function AppContent() {
         element={
           <PrivacyPolicyPage
             onNavigate={handleNavigate}
-          />
-        }
-      />
-      <Route
-        path="/courses"
-        element={
-          <CoursesPage
-            onNavigate={handleNavigate}
-          />
-        }
-      />
-      <Route
-        path="/course-detail"
-        element={
-          courseData ? (
-            <CourseDetailPage
-              course={courseData}
-              onNavigate={handleNavigate}
-            />
-          ) : (
-            <CoursesPage onNavigate={handleNavigate} />
-          )
-        }
-      />
-      <Route
-        path="/dashboard"
-        element={
-          <StudentDashboard
-            onNavigate={handleNavigate}
-            user={userProfile}
-            onLogout={handleLogout}
-          />
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <AdminDashboard
-            onNavigate={handleNavigate}
-            user={userProfile}
-            onLogout={handleLogout}
           />
         }
       />

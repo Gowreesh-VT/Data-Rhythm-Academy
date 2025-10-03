@@ -150,7 +150,7 @@ export function SlotBookingPage({ onNavigate, user, onLogout }: SlotBookingPageP
             
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
-              <Button variant="outline" onClick={() => onNavigate('/dashboard')}>
+              <Button variant="outline" onClick={() => onNavigate('/')}>
                 Dashboard
               </Button>
               <Button variant="ghost" onClick={onLogout}>

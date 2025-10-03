@@ -20,8 +20,7 @@ import {
   Zap,
   Shield,
   BarChart3,
-  Globe,
-  BookOpen
+  Globe
 } from 'lucide-react';
 
 import { NavigatePath } from '../types';
@@ -247,7 +246,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
             
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">Features</a>
-              <button onClick={() => onNavigate('/courses')} className="text-gray-600 hover:text-blue-600 transition-colors">Courses</button>
+              <a href="#courses" className="text-gray-600 hover:text-blue-600 transition-colors">Courses</a>
               <a href="#pricing" className="text-gray-600 hover:text-blue-600 transition-colors">Pricing</a>
               <a href="#testimonials" className="text-gray-600 hover:text-blue-600 transition-colors">Reviews</a>
             </div>
@@ -256,9 +255,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               {user ? (
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600">Welcome, {user.name}</span>
-                  <Button variant="outline" onClick={() => onNavigate(user.role === 'super_admin' || user.role === 'admin' ? '/admin' : '/dashboard')}>
-                    Dashboard
-                  </Button>
+                  <Button variant="outline" onClick={() => onNavigate('/booking')}>Dashboard</Button>
                   <Button variant="ghost" onClick={onLogout}>Logout</Button>
                 </div>
               ) : (
@@ -303,15 +300,14 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
                   Start Learning Today
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
-                <Button 
+                {/* <Button 
                   size="lg" 
                   variant="outline"
                   className="border-blue-200 text-blue-600 hover:bg-blue-50 px-8 py-6 text-lg"
-                  onClick={() => onNavigate('/courses')}
                 >
-                  <BookOpen className="mr-2 w-5 h-5" />
-                  Browse Courses
-                </Button>
+                  <PlayCircle className="mr-2 w-5 h-5" />
+                  Watch Demo
+                </Button> */}
               </div>
 
               {/* Trust indicators */}
