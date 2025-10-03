@@ -64,47 +64,15 @@ export const authHelpers = {
   // Sign up with email and password
   signUp: async (email: string, password: string, additionalData?: any) => {
     try {
-      console.log('Firebase signUp called with:', { email, hasPassword: !!password, additionalData });
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log('Firebase signUp successful:', userCredential.user.uid);
-      
-      // Create user profile with additional data
-      if (additionalData) {
-        const userProfileData = {
-          email: email,
-          name: additionalData.full_name || additionalData.name || '',
-          photoURL: userCredential.user.photoURL || '',
-          provider: 'email',
-          role: additionalData.role || 'student',
-          // Store additional registration data
-          firstName: additionalData.first_name || '',
-          lastName: additionalData.last_name || '',
-          course: additionalData.course || '',
-          experience: additionalData.experience || '',
-          learningGoals: additionalData.learning_goals || []
-        };
-        
-        console.log('Creating user profile with data:', userProfileData);
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
-          ...userProfileData,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-      }
-      
       return { 
         data: { user: userCredential.user }, 
         error: null 
       };
     } catch (error: any) {
-      console.error('Firebase signUp error:', {
-        code: error.code,
-        message: error.message,
-        fullError: error
-      });
       return { 
         data: null, 
-        error: { message: error.message, code: error.code } 
+        error: { message: error.message } 
       };
     }
   },
@@ -112,41 +80,15 @@ export const authHelpers = {
   // Sign in with email and password
   signIn: async (email: string, password: string) => {
     try {
-      console.log('Firebase signIn called with:', { email, hasPassword: !!password });
-      console.log('Auth state before signIn:', auth.currentUser);
-      
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log('Firebase signIn successful:', {
-        uid: userCredential.user.uid,
-        email: userCredential.user.email,
-        emailVerified: userCredential.user.emailVerified
-      });
-      
       return { 
         data: { user: userCredential.user }, 
         error: null 
       };
     } catch (error: any) {
-      console.error('Firebase signIn error:', {
-        code: error.code,
-        message: error.message,
-        fullError: error
-      });
-      
-      let userFriendlyMessage = error.message;
-      if (error.code === 'auth/user-not-found') {
-        userFriendlyMessage = 'No account found with this email address.';
-      } else if (error.code === 'auth/wrong-password') {
-        userFriendlyMessage = 'Incorrect password.';
-      } else if (error.code === 'auth/invalid-email') {
-        userFriendlyMessage = 'Invalid email address.';
-      } else if (error.code === 'auth/too-many-requests') {
-        userFriendlyMessage = 'Too many failed attempts. Please try again later.';
-      }
-      
       return { 
         data: null, 
-        error: { message: userFriendlyMessage, code: error.code } 
+        error: { message: error.message } 
       };
     }
   },
@@ -230,7 +172,6 @@ export const dbHelpers = {
     try {
       await setDoc(doc(db, 'users', userId), {
         ...userData,
-        role: userData.role || 'student', // Default to student role
         createdAt: new Date(),
         updatedAt: new Date()
       }, { merge: true });
@@ -266,34 +207,6 @@ export const dbHelpers = {
       return { success: true, error: null };
     } catch (error: any) {
       return { success: false, error: error.message };
-    }
-  },
-
-  // Update user role (only super admin can do this)
-  updateUserRole: async (userId: string, newRole: 'student' | 'admin' | 'super_admin') => {
-    try {
-      await updateDoc(doc(db, 'users', userId), {
-        role: newRole,
-        updatedAt: new Date()
-      });
-      return { success: true, error: null };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Get all users (admin function)
-  getAllUsers: async () => {
-    try {
-      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
-      const users = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      return { data: users, error: null };
-    } catch (error: any) {
-      return { data: null, error: error.message };
     }
   },
 
