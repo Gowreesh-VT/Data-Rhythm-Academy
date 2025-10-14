@@ -1,17 +1,70 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
     
-    // Users collection
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Users collection - users can only read/write their own data
     match /users/{userId} {
-      // Only the authenticated user can read/write their own document
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isAuthenticated() && isOwner(userId);
     }
 
-    // Example: public posts collection (read-only for everyone)
-    match /posts/{postId} {
+    // Courses collection
+    match /courses/{courseId} {
+      // Anyone can read courses
       allow read: if true;
-      allow write: if request.auth != null;
+      // Only authenticated users can create/update courses
+      allow create, update: if request.auth != null;
+      // Only the course creator can delete
+      allow delete: if request.auth != null && request.auth.uid == resource.data.instructorId;
+    }
+
+    // Enrollments collection
+    match /enrollments/{enrollmentId} {
+      // Users can read their own enrollments
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Users can create their own enrollments
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Users can update their own enrollments
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Users can delete their own enrollments
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Posts collection (for course discussions, reviews, etc.)
+    match /posts/{postId} {
+      // Anyone can read posts
+      allow read: if true;
+      // Only authenticated users can create posts
+      allow create: if request.auth != null;
+      // Only post creators can update/delete their posts
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Reviews collection
+    match /reviews/{reviewId} {
+      // Anyone can read reviews
+      allow read: if true;
+      // Only authenticated users can create reviews
+      allow create: if request.auth != null;
+      // Only review creators can update/delete their reviews
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Wishlist collection
+    match /wishlist/{wishlistId} {
+      // Users can read their own wishlist items
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Users can create their own wishlist items
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Users can delete their own wishlist items
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
   }
 }

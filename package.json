@@ -44,7 +44,7 @@
             "react-hook-form": "^7.55.0",
             "react-resizable-panels": "^2.1.7",
             "react-router-dom": "^7.9.2",
-            "recharts": "^2.15.2",
+            "recharts": "^2.15.4",
             "sonner": "^2.0.3",
             "tailwind-merge": "*",
             "vaul": "^1.1.2"
@@ -62,6 +62,11 @@
       "scripts": {
             "dev": "vite",
             "build": "vite build",
-            "deploy": "npm run build && npx firebase deploy"
+            "build:prod": "cp .env.production .env && vite build",
+            "preview": "vite preview",
+            "deploy": "npm run build && npx firebase deploy",
+            "deploy:test": "firebase use data-rhythm-test && cp .env.test .env && npm run build && firebase deploy --only hosting",
+            "deploy:prod": "firebase use the-data-rhythm-academy && npm run build:prod && firebase deploy --only hosting",
+            "deploy:domain": "firebase use the-data-rhythm-academy && npm run build:prod && firebase deploy --only hosting:datarhythmacademy"
       }
 }

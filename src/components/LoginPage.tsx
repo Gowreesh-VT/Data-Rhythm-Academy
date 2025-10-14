@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import { ImageWithFallback } from './ImageWithFallback';
 import { Logo } from './ui/logo';
 import { NavigatePath } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { AuthErrorDisplay, useAuthErrorHandler } from './AuthErrorDisplay';
 import { 
   Eye, 
   EyeOff, 
@@ -32,8 +33,9 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
     password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<any>(null);
   const { signIn, signInWithOAuth } = useAuth();
+  const { handleAuthError, isRetryableError } = useAuthErrorHandler();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +46,7 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
       const { data, error } = await signIn(formData.email, formData.password);
       
       if (error) {
-        setError(error.message);
+        setError(error);
       } else if (data.user) {
         // Successfully logged in
         onLogin({
@@ -68,14 +70,21 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
       const { error } = await signInWithOAuth(provider);
       
       if (error) {
-        setError(error.message);
+        setError(error);
         setIsLoading(false);
       }
       // Note: OAuth redirects will handle the success case
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+      setError({
+        code: 'unknown',
+        message: 'An unexpected error occurred. Please try again.'
+      });
       setIsLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    setError(null);
   };
 
   return (
@@ -153,10 +162,10 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
 
               {/* Error Display */}
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center space-x-2 text-red-700">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span className="text-sm">{error}</span>
-                </div>
+                <AuthErrorDisplay 
+                  error={error} 
+                  onRetry={isRetryableError(error) ? handleRetry : undefined}
+                />
               )}
 
               {/* Login Form */}

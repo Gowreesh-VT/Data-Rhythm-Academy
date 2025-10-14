@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Logo } from './ui/logo';
 import { Page } from '../types';
+import { trackPaymentInitiated, trackPaymentCompleted, trackPaymentFailed } from '../lib/analytics';
 import { 
   CreditCard, 
   Shield, 
@@ -73,10 +74,27 @@ export function PaymentPage({ onNavigate, user, onLogout }: PaymentPageProps) {
     
     setIsProcessing(true);
     
+    // Track payment initiated
+    const courseId = 'sample-course-id'; // Replace with actual course ID
+    const amount = 2999; // Replace with actual amount
+    trackPaymentInitiated(courseId, amount);
+    
     // Simulate payment processing
     setTimeout(() => {
       setIsProcessing(false);
-      setPaymentSuccess(true);
+      
+      // Simulate payment success/failure (90% success rate)
+      const isSuccess = Math.random() > 0.1;
+      
+      if (isSuccess) {
+        setPaymentSuccess(true);
+        // Track successful payment
+        const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        trackPaymentCompleted(transactionId, courseId, amount);
+      } else {
+        // Track failed payment
+        trackPaymentFailed(courseId, amount, 'Payment processing failed');
+      }
     }, 3000);
   };
 

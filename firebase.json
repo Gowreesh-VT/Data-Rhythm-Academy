@@ -4,6 +4,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "site": "the-data-rhythm-academy",
     "public": "dist",
     "ignore": [
       "firebase.json",

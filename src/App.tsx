@@ -4,14 +4,30 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LandingPage } from "./components/LandingPage";
 import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
-import { SlotBookingPage } from "./components/SlotBookingPage";
-import { PaymentPage } from "./components/PaymentPage";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
+import { CoursesPage } from "./components/CoursesPage";
+import { StudentDashboard } from "./components/StudentDashboard";
+import { MyCoursesPage } from "./components/MyCoursesPage";
+import { InstructorDashboard } from "./components/InstructorDashboard";
+import { AdminDashboard } from "./components/AdminDashboard";
+import { CourseDetailPage } from "./components/CourseDetailPage";
+import { LessonViewer } from "./components/LessonViewer";
+import { UserProfilePage } from "./components/UserProfilePage";
+import { WishlistPage } from "./components/WishlistPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { useNetworkStatus, OfflineNotification } from "./hooks/useNetworkStatus";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { useAnalytics, useSessionTracking } from "./hooks/useAnalytics";
 
 function AppContent() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isOnline, isSlowConnection } = useNetworkStatus();
+  
+  // Initialize analytics tracking
+  useAnalytics();
+  useSessionTracking();
 
   // Add swipe gesture support for mobile devices
   useEffect(() => {
@@ -69,12 +85,12 @@ function AppContent() {
 
   const handleLogin = (userData: any) => {
     // Navigation will be handled by auth state change
-    navigate("/booking");
+    // Removed hardcoded booking redirect
   };
 
   const handleRegister = (userData: any) => {
-    // Navigation will be handled by auth state change
-    navigate("/booking");
+    // Navigation will be handled by auth state change  
+    // Removed hardcoded booking redirect
   };
 
   const handleLogout = async () => {
@@ -82,10 +98,17 @@ function AppContent() {
     navigate("/");
   };
 
-  // Auto-redirect authenticated users from login/register pages
+  // Auto-redirect authenticated users from login/register pages to appropriate dashboard
   useEffect(() => {
     if (user && (location.pathname === '/login' || location.pathname === '/register')) {
-      navigate('/booking');
+      // Redirect based on user role
+      if (user.role === 'admin') {
+        navigate('/admin-dashboard');
+      } else if (user.role === 'instructor') {
+        navigate('/instructor-dashboard');
+      } else {
+        navigate('/my-courses'); // Default to student dashboard
+      }
     }
   }, [user, location.pathname, navigate]);
 
@@ -101,7 +124,9 @@ function AppContent() {
   }
 
   return (
-    <Routes>
+    <>
+      <OfflineNotification isOnline={isOnline} isSlowConnection={isSlowConnection} />
+      <Routes>
       <Route
         path="/"
         element={
@@ -131,26 +156,6 @@ function AppContent() {
         }
       />
       <Route
-        path="/booking"
-        element={
-          <SlotBookingPage
-            onNavigate={handleNavigate}
-            user={user}
-            onLogout={handleLogout}
-          />
-        }
-      />
-      <Route
-        path="/payment"
-        element={
-          <PaymentPage
-            onNavigate={handleNavigate}
-            user={user}
-            onLogout={handleLogout}
-          />
-        }
-      />
-      <Route
         path="/privacy"
         element={
           <PrivacyPolicyPage
@@ -158,14 +163,89 @@ function AppContent() {
           />
         }
       />
+      <Route
+        path="/courses"
+        element={
+          <CoursesPage
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+          />
+        }
+      />
+      <Route
+        path="/course/:courseId"
+        element={
+          <CourseDetailPage
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+          />
+        }
+      />
+      <Route
+        path="/lesson/:lessonId"
+        element={
+          <LessonViewer
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+          />
+        }
+      />
+      <Route
+        path="/my-courses"
+        element={
+          <MyCoursesPage
+            onNavigate={handleNavigate}
+          />
+        }
+      />
+      <Route
+        path="/instructor-dashboard"
+        element={
+          <InstructorDashboard
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+          />
+        }
+      />
+      <Route
+        path="/admin-dashboard"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminDashboard
+              onNavigate={handleNavigate}
+              onLogout={handleLogout}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <UserProfilePage
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+          />
+        }
+      />
+      <Route
+        path="/wishlist"
+        element={
+          <WishlistPage
+            onNavigate={handleNavigate}
+          />
+        }
+      />
     </Routes>
+    </>
   );
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

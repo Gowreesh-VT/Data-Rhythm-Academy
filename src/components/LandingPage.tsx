@@ -4,9 +4,10 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import { ImageWithFallback } from './ImageWithFallback';
 import { Logo } from './ui/logo';
 import { Page } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   Users, 
   Award, 
@@ -20,7 +21,10 @@ import {
   Zap,
   Shield,
   BarChart3,
-  Globe
+  Globe,
+  Smartphone,
+  Download,
+  MessageCircle
 } from 'lucide-react';
 
 import { NavigatePath } from '../types';
@@ -32,36 +36,48 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
+  const { user: authUser } = useAuth();
+  
+  const handleDashboardRedirect = () => {
+    if (authUser?.role === 'admin') {
+      onNavigate('/admin-dashboard');
+    } else if (authUser?.role === 'instructor') {
+      onNavigate('/instructor-dashboard');
+    } else {
+      onNavigate('/my-courses');
+    }
+  };
+
   const features = [
     {
-      icon: <Logo size="xl" />,
-      title: "Expert-Led Courses",
-      description: "Learn from industry professionals with years of real-world experience"
+      icon: <PlayCircle className="w-8 h-8" />,
+      title: "HD Video Learning",
+      description: "High-quality video lessons with multiple resolutions and playback speeds"
     },
     {
-      icon: <Users className="w-8 h-8" />,
-      title: "Live Mentorship",
-      description: "Get personalized guidance through one-on-one sessions with mentors"
+      icon: <Smartphone className="w-8 h-8" />,
+      title: "Mobile Learning",
+      description: "Access courses on any device - phone, tablet, or desktop with seamless sync"
     },
     {
-      icon: <Award className="w-8 h-8" />,
-      title: "Certified Learning",
-      description: "Earn industry-recognized certificates upon course completion"
+      icon: <Download className="w-8 h-8" />,
+      title: "Offline Access",
+      description: "Download lessons for offline viewing and learn without internet"
     },
     {
       icon: <Clock className="w-8 h-8" />,
-      title: "Flexible Schedule",
-      description: "Learn at your own pace with 24/7 access to course materials"
+      title: "Self-Paced Learning",
+      description: "Learn at your own pace with lifetime access to course materials"
     },
     {
-      icon: <Target className="w-8 h-8" />,
-      title: "Project-Based",
-      description: "Build real projects to showcase in your professional portfolio"
+      icon: <Award className="w-8 h-8" />,
+      title: "Digital Certificates",
+      description: "Earn verified certificates upon completion to boost your career"
     },
     {
-      icon: <BarChart3 className="w-8 h-8" />,
-      title: "Track Progress",
-      description: "Monitor your learning journey with detailed analytics and insights"
+      icon: <MessageCircle className="w-8 h-8" />,
+      title: "Interactive Community",
+      description: "Connect with instructors and peers through course discussions"
     }
   ];
 
@@ -246,7 +262,12 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
             
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">Features</a>
-              <a href="#courses" className="text-gray-600 hover:text-blue-600 transition-colors">Courses</a>
+              <button 
+                onClick={() => onNavigate('/courses')}
+                className="text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                Courses
+              </button>
               <a href="#pricing" className="text-gray-600 hover:text-blue-600 transition-colors">Pricing</a>
               <a href="#testimonials" className="text-gray-600 hover:text-blue-600 transition-colors">Reviews</a>
             </div>
@@ -255,7 +276,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               {user ? (
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600">Welcome, {user.name}</span>
-                  <Button variant="outline" onClick={() => onNavigate('/booking')}>Dashboard</Button>
+                  <Button variant="outline" onClick={handleDashboardRedirect}>Dashboard</Button>
                   <Button variant="ghost" onClick={onLogout}>Logout</Button>
                 </div>
               ) : (
@@ -284,45 +305,46 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               transition={{ duration: 0.6 }}
             >
               <h1 className="text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-blue-800 to-cyan-700 bg-clip-text text-transparent">
-                Master Skills That Matter
+                Learn Online. Advance Your Career.
               </h1>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Join thousands of professionals advancing their careers with our expert-led courses, 
-                personalized mentorship, and hands-on projects that prepare you for real-world success.
+                Access high-quality online courses anytime, anywhere. Learn at your own pace with 
+                HD videos, interactive quizzes, and downloadable resources designed for modern professionals.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 mb-12">
                 <Button 
                   size="lg"
                   className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-8 py-6 text-lg"
-                  onClick={() => onNavigate('/register')}
+                  onClick={() => onNavigate('/courses')}
                 >
-                  Start Learning Today
+                  Explore Online Courses
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
-                {/* <Button 
+                <Button 
                   size="lg" 
                   variant="outline"
                   className="border-blue-200 text-blue-600 hover:bg-blue-50 px-8 py-6 text-lg"
+                  onClick={() => onNavigate('/register')}
                 >
                   <PlayCircle className="mr-2 w-5 h-5" />
-                  Watch Demo
-                </Button> */}
+                  Start Learning Free
+                </Button>
               </div>
 
               {/* Trust indicators */}
               <div className="flex items-center space-x-8 text-sm text-gray-500">
                 <div className="flex items-center space-x-2">
-                  <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                  <span>4.9/5 rating</span>
+                  <PlayCircle className="w-5 h-5 text-blue-400" />
+                  <span>HD Video Quality</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Users className="w-5 h-5" />
-                  <span>Available in English and Tamil</span>
+                  <Download className="w-5 h-5 text-green-400" />
+                  <span>Offline Downloads</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Award className="w-5 h-5" />
-                  <span>Industry certified</span>
+                  <Award className="w-5 h-5 text-yellow-400" />
+                  <span>Digital Certificates</span>
                 </div>
               </div>
             </motion.div>

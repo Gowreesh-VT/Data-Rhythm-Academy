@@ -1,0 +1,140 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function hasRole(role) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+    
+    function isInstructor() {
+      return hasRole('instructor');
+    }
+    
+    function isStudent() {
+      return hasRole('student');
+    }
+    
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    // Users collection - users can only read/write their own data
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      // Allow instructors to read basic user info for their students
+      allow read: if isAuthenticated() && isInstructor();
+    }
+
+    // Courses collection
+    match /courses/{courseId} {
+      // Anyone can read published courses
+      allow read: if resource.data.isPublished == true;
+      // Instructors can read their own courses (published or not)
+      allow read: if isAuthenticated() && isInstructor() && resource.data.instructorId == request.auth.uid;
+      // Only instructors can create courses
+      allow create: if isAuthenticated() && isInstructor() && request.auth.uid == resource.data.instructorId;
+      // Only course owner can update their courses
+      allow update: if isAuthenticated() && isInstructor() && resource.data.instructorId == request.auth.uid;
+      // Only course owner or admin can delete courses
+      allow delete: if isAuthenticated() && (
+        (isInstructor() && resource.data.instructorId == request.auth.uid) ||
+        isAdmin()
+      );
+    }
+
+    // Enrollments collection
+    match /enrollments/{enrollmentId} {
+      // Students can read their own enrollments
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      // Instructors can read enrollments for their courses
+      allow read: if isAuthenticated() && isInstructor() && 
+        get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId == request.auth.uid;
+      // Only students can create enrollments for themselves
+      allow create: if isAuthenticated() && isStudent() && request.auth.uid == resource.data.userId;
+      // Students can update their own enrollment progress
+      allow update: if isAuthenticated() && isOwner(resource.data.userId);
+      // Only the enrolled student or course instructor can delete enrollments
+      allow delete: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        (isInstructor() && get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId == request.auth.uid)
+      );
+    }
+
+    // Lessons collection (subcollection of courses)
+    match /courses/{courseId}/lessons/{lessonId} {
+      // Anyone can read preview lessons of published courses
+      allow read: if resource.data.isPreview == true && 
+        get(/databases/$(database)/documents/courses/$(courseId)).data.isPublished == true;
+      // Enrolled students can read all lessons of their enrolled courses
+      allow read: if isAuthenticated() && isStudent() && 
+        exists(/databases/$(database)/documents/enrollments/$(request.auth.uid + '_' + courseId));
+      // Course instructors can read all their course lessons
+      allow read: if isAuthenticated() && isInstructor() && 
+        get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid;
+      // Only course instructors can create/update/delete lessons
+      allow create, update, delete: if isAuthenticated() && isInstructor() && 
+        get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid;
+    }
+
+    // Reviews collection
+    match /reviews/{reviewId} {
+      // Anyone can read reviews for published courses
+      allow read: if get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.isPublished == true;
+      // Only enrolled students can create reviews
+      allow create: if isAuthenticated() && isStudent() && 
+        request.auth.uid == resource.data.userId &&
+        exists(/databases/$(database)/documents/enrollments/$(request.auth.uid + '_' + resource.data.courseId));
+      // Students can update their own reviews
+      allow update: if isAuthenticated() && isOwner(resource.data.userId);
+      // Students and course instructors can delete reviews
+      allow delete: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        (isInstructor() && get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId == request.auth.uid)
+      );
+    }
+
+    // Certificates collection
+    match /certificates/{certificateId} {
+      // Students can read their own certificates
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      // Instructors can read certificates for their courses
+      allow read: if isAuthenticated() && isInstructor() && 
+        get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId == request.auth.uid;
+      // System generates certificates (admin only)
+      allow create, update: if isAuthenticated() && isAdmin();
+      // Only certificate owner can delete
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    // Payment records collection
+    match /payments/{paymentId} {
+      // Users can read their own payment records
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      // Instructors can read payments for their courses
+      allow read: if isAuthenticated() && isInstructor() && 
+        get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId == request.auth.uid;
+      // System creates payment records
+      allow create, update: if isAuthenticated();
+      // No deletions allowed for payment records (audit trail)
+      allow delete: if false;
+    }
+
+    // Analytics collection (admin only)
+    match /analytics/{document=**} {
+      allow read, write: if isAuthenticated() && isAdmin();
+    }
+
+    // Default deny rule
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
