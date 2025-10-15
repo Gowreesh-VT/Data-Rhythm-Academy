@@ -2,7 +2,7 @@
 import { Course, CourseCategory, CourseLevel } from '../types';
 
 // Helper function to add online course features
-const addOnlineFeatures = (course: Omit<Course, 'isOnline' | 'hasLiveSupport' | 'discussionEnabled' | 'downloadableResources' | 'mobileAccess' | 'lifetimeAccess' | 'completionCertificate' | 'closedCaptions' | 'multipleLanguageSubtitles' | 'scheduledClasses' | 'classSchedule' | 'liveClassUrl' | 'recordedClassesAvailable' | 'classNotifications' | 'maxStudentsPerClass'>): Course => ({
+const addOnlineFeatures = (course: Omit<Course, 'isOnline' | 'hasLiveSupport' | 'discussionEnabled' | 'downloadableResources' | 'mobileAccess' | 'lifetimeAccess' | 'completionCertificate' | 'closedCaptions' | 'scheduledClasses' | 'classSchedule' | 'liveClassUrl' | 'recordedClassesAvailable' | 'classNotifications' | 'maxStudentsPerClass'>): Course => ({
   ...course,
   isOnline: true as const,
   hasLiveSupport: true,
@@ -12,7 +12,6 @@ const addOnlineFeatures = (course: Omit<Course, 'isOnline' | 'hasLiveSupport' | 
   lifetimeAccess: true,
   completionCertificate: true,
   closedCaptions: true,
-  multipleLanguageSubtitles: ['en', 'es', 'fr'],
   scheduledClasses: [],
   classSchedule: {
     courseId: course.id,
@@ -35,26 +34,66 @@ const addOnlineFeatures = (course: Omit<Course, 'isOnline' | 'hasLiveSupport' | 
 export const getMockCourses = (): Course[] => [
   addOnlineFeatures({
     id: '1',
-    title: 'Complete Python Data Science Bootcamp',
-    description: 'Learn Python programming, data analysis, machine learning, and data visualization in this comprehensive bootcamp.',
-    shortDescription: 'Master Python for data science with hands-on projects',
+    title: 'Introduction to Python',
+    description: 'Master Python programming from Basics and get started with programming',
+    shortDescription: 'Master Python programming from Basics and get started with programming',
     instructorId: 'instructor1',
     instructorName: 'Dr. Sarah Johnson',
     instructorImage: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah&backgroundColor=b6e3f4',
     instructorBio: 'Data Scientist with 8+ years experience at Google and Microsoft',
-    category: 'Data Science' as CourseCategory,
+    category: 'Python' as CourseCategory,
     level: 'Beginner' as CourseLevel,
     language: 'English',
-    price: 89.99,
-    originalPrice: 199.99,
-    currency: 'USD',
-    duration: 40,
+    price: 1000,
+    originalPrice: 3500,
+    currency: '₹',
+    duration: 8,
     thumbnailUrl: 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=300&fit=crop&auto=format',
     previewVideoUrl: 'https://example.com/preview1.mp4',
-    rating: 4.8,
-    totalRatings: 1250,
-    totalStudents: 15420,
-    lessons: [],
+    rating: 4.9,
+    totalRatings: 970,
+    totalStudents: 5670,
+    lessons: [
+      {
+        id: 'lesson-1-1',
+        courseId: '1',
+        title: 'Introduction to Python',
+        description: 'Learn the basics of Python programming language',
+        duration: 15,
+        videoUrl: 'https://example.com/video1.mp4',
+        order: 1,
+        isPreview: true,
+        videoQuality: '1080p' as const,
+        playbackSpeed: true,
+        downloadable: true
+      },
+      {
+        id: 'lesson-1-2',
+        courseId: '1', 
+        title: 'Python Syntax and Variables',
+        description: 'Understanding Python syntax and working with variables',
+        duration: 20,
+        videoUrl: 'https://example.com/video2.mp4',
+        order: 2,
+        isPreview: false,
+        videoQuality: '1080p' as const,
+        playbackSpeed: true,
+        downloadable: true
+      },
+      {
+        id: 'lesson-1-3',
+        courseId: '1',
+        title: 'Data Types and Structures',
+        description: 'Working with lists, dictionaries, and other data structures',
+        duration: 25,
+        videoUrl: 'https://example.com/video3.mp4',
+        order: 3,
+        isPreview: false,
+        videoQuality: '1080p' as const,
+        playbackSpeed: true,
+        downloadable: true
+      }
+    ],
     learningObjectives: [
       'Master Python programming fundamentals',
       'Learn data manipulation with Pandas',
@@ -87,7 +126,34 @@ export const getMockCourses = (): Course[] => [
     rating: 4.9,
     totalRatings: 890,
     totalStudents: 8350,
-    lessons: [],
+    lessons: [
+      {
+        id: 'lesson-2-1',
+        courseId: '2',
+        title: 'React Hooks Fundamentals',
+        description: 'Master useState, useEffect, and other essential hooks',
+        duration: 30,
+        videoUrl: 'https://example.com/react1.mp4',
+        order: 1,
+        isPreview: true,
+        videoQuality: '1080p' as const,
+        playbackSpeed: true,
+        downloadable: true
+      },
+      {
+        id: 'lesson-2-2',
+        courseId: '2',
+        title: 'Advanced State Management',
+        description: 'useContext, useReducer, and complex state patterns',
+        duration: 35,
+        videoUrl: 'https://example.com/react2.mp4',
+        order: 2,
+        isPreview: false,
+        videoQuality: '1080p' as const,
+        playbackSpeed: true,
+        downloadable: true
+      }
+    ],
     learningObjectives: [
       'Master React hooks and custom hooks',
       'Implement complex state management',
@@ -120,7 +186,21 @@ export const getMockCourses = (): Course[] => [
     rating: 4.7,
     totalRatings: 2100,
     totalStudents: 12800,
-    lessons: [],
+    lessons: [
+      {
+        id: 'lesson-3-1',
+        courseId: '3',
+        title: 'Introduction to Machine Learning',
+        description: 'Understanding ML concepts and algorithms',
+        duration: 25,
+        videoUrl: 'https://example.com/ml1.mp4',
+        order: 1,
+        isPreview: true,
+        videoQuality: '1080p' as const,
+        playbackSpeed: true,
+        downloadable: true
+      }
+    ],
     learningObjectives: [
       'Understand key ML algorithms',
       'Evaluate model performance',
@@ -153,7 +233,21 @@ export const getMockCourses = (): Course[] => [
     rating: 4.6,
     totalRatings: 1580,
     totalStudents: 9240,
-    lessons: [],
+    lessons: [
+      {
+        id: 'lesson-4-1',
+        courseId: '4',
+        title: 'Setting up the Development Environment',
+        description: 'Install Node.js, npm, and create your first project',
+        duration: 20,
+        videoUrl: 'https://example.com/fullstack1.mp4',
+        order: 1,
+        isPreview: true,
+        videoQuality: '1080p' as const,
+        playbackSpeed: true,
+        downloadable: true
+      }
+    ],
     learningObjectives: [
       'Build RESTful APIs with Node.js and Express',
       'Work with MongoDB and Mongoose',
@@ -186,7 +280,21 @@ export const getMockCourses = (): Course[] => [
     rating: 4.5,
     totalRatings: 920,
     totalStudents: 6780,
-    lessons: [],
+    lessons: [
+      {
+        id: 'lesson-5-1',
+        courseId: '5',
+        title: 'Digital Marketing Fundamentals',
+        description: 'Understanding the digital marketing landscape',
+        duration: 18,
+        videoUrl: 'https://example.com/marketing1.mp4',
+        order: 1,
+        isPreview: true,
+        videoQuality: '1080p' as const,
+        playbackSpeed: true,
+        downloadable: true
+      }
+    ],
     learningObjectives: [
       'Master SEO and content marketing',
       'Create effective social media campaigns',
@@ -219,7 +327,21 @@ export const getMockCourses = (): Course[] => [
     rating: 4.8,
     totalRatings: 1350,
     totalStudents: 8900,
-    lessons: [],
+    lessons: [
+      {
+        id: 'lesson-6-1',
+        courseId: '6',
+        title: 'Introduction to UI/UX Design',
+        description: 'Understanding design principles and user psychology',
+        duration: 22,
+        videoUrl: 'https://example.com/design1.mp4',
+        order: 1,
+        isPreview: true,
+        videoQuality: '1080p' as const,
+        playbackSpeed: true,
+        downloadable: true
+      }
+    ],
     learningObjectives: [
       'Understand design principles and psychology',
       'Create wireframes and prototypes',

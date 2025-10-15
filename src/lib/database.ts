@@ -6,6 +6,7 @@ import {
   deleteDoc, 
   getDoc, 
   getDocs, 
+  setDoc,
   query, 
   where, 
   orderBy, 
@@ -17,7 +18,32 @@ import {
   arrayRemove
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { logger } from '../utils/logger';
 import { Course, Enrollment, CourseProgress, User } from '../types';
+
+// Helper function to safely update user documents (creates if doesn't exist)
+const safeUpdateUserDoc = async (userId: string, updateData: any) => {
+  const userDocRef = doc(db, 'users', userId);
+  try {
+    await updateDoc(userDocRef, updateData);
+  } catch (error: any) {
+    if (error.code === 'not-found') {
+      // Create user document with minimal data if it doesn't exist
+      await setDoc(userDocRef, {
+        ...updateData,
+        enrolledCourses: updateData.enrolledCourses || [],
+        createdCourses: updateData.createdCourses || [],
+        assignedStudents: updateData.assignedStudents || [],
+        assignedInstructors: updateData.assignedInstructors || [],
+        profileStatus: updateData.profileStatus || 'active',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    } else {
+      throw error;
+    }
+  }
+};
 
 // User Management
 export const createUserProfile = async (userId: string, userData: {
@@ -31,7 +57,7 @@ export const createUserProfile = async (userId: string, userData: {
 }) => {
   try {
     const userDocRef = doc(db, 'users', userId);
-    await updateDoc(userDocRef, {
+    await setDoc(userDocRef, {
       ...userData,
       enrolledCourses: [],
       createdCourses: userData.role === 'instructor' ? [] : undefined,
@@ -43,7 +69,7 @@ export const createUserProfile = async (userId: string, userData: {
     });
     return { success: true };
   } catch (error) {
-    console.error('Error creating user profile:', error);
+    logger.error('Error creating user profile:', error);
     return { error: error as Error };
   }
 };
@@ -56,7 +82,7 @@ export const getUserProfile = async (userId: string) => {
     }
     return { data: null };
   } catch (error) {
-    console.error('Error getting user profile:', error);
+    logger.error('Error getting user profile:', error);
     return { error: error as Error };
   }
 };
@@ -70,15 +96,14 @@ export const createCourse = async (courseData: Omit<Course, 'id' | 'createdAt' |
       updatedAt: serverTimestamp()
     });
     
-    // Add course to instructor's created courses
-    const userDocRef = doc(db, 'users', courseData.instructorId);
-    await updateDoc(userDocRef, {
+    // Add course to instructor's created courses using safe update
+    await safeUpdateUserDoc(courseData.instructorId, {
       createdCourses: arrayUnion(docRef.id)
     });
     
     return { data: { id: docRef.id, ...courseData } };
   } catch (error) {
-    console.error('Error creating course:', error);
+    logger.error('Error creating course:', error);
     return { error: error as Error };
   }
 };
@@ -92,39 +117,64 @@ export const updateCourse = async (courseId: string, updates: Partial<Course>) =
     });
     return { success: true };
   } catch (error) {
-    console.error('Error updating course:', error);
+    logger.error('Error updating course:', error);
     return { error: error as Error };
   }
 };
 
 export const getCourse = async (courseId: string) => {
   try {
+    // First try to get from Firestore
     const courseDoc = await getDoc(doc(db, 'courses', courseId));
     if (courseDoc.exists()) {
       return { data: { id: courseDoc.id, ...courseDoc.data() } as Course };
     }
+    
+    // If not found in Firestore, check mock data
+    const { getMockCourses } = await import('../data/mockCourses');
+    const mockCourses = getMockCourses();
+    const mockCourse = mockCourses.find(course => course.id === courseId);
+    
+    if (mockCourse) {
+      return { data: mockCourse };
+    }
+    
     return { data: null };
   } catch (error) {
-    console.error('Error getting course:', error);
+    logger.error('Error getting course:', error);
     return { error: error as Error };
   }
 };
 
 export const getPublishedCourses = async () => {
   try {
+    // Try to get courses from Firestore first
     const q = query(
       collection(db, 'courses'), 
       where('isPublished', '==', true),
       orderBy('createdAt', 'desc')
     );
     const querySnapshot = await getDocs(q);
-    const courses = querySnapshot.docs.map(doc => ({
+    const firestoreCourses = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as Course[];
-    return { data: courses };
+    
+    // Also get mock courses
+    const { getMockCourses } = await import('../data/mockCourses');
+    const mockCourses = getMockCourses().filter(course => course.isPublished);
+    
+    // Combine both (Firestore courses take precedence if same ID)
+    const allCourses = [...firestoreCourses];
+    mockCourses.forEach(mockCourse => {
+      if (!allCourses.find(c => c.id === mockCourse.id)) {
+        allCourses.push(mockCourse);
+      }
+    });
+    
+    return { data: allCourses };
   } catch (error) {
-    console.error('Error getting published courses:', error);
+    logger.error('Error getting published courses:', error);
     return { error: error as Error };
   }
 };
@@ -143,7 +193,7 @@ export const getInstructorCourses = async (instructorId: string) => {
     })) as Course[];
     return { data: courses };
   } catch (error) {
-    console.error('Error getting instructor courses:', error);
+    logger.error('Error getting instructor courses:', error);
     return { error: error as Error };
   }
 };
@@ -182,21 +232,25 @@ export const enrollInCourse = async (userId: string, courseId: string, paymentDa
     
     const docRef = await addDoc(collection(db, 'enrollments'), enrollmentData);
     
-    // Update user's enrolled courses
-    const userDocRef = doc(db, 'users', userId);
-    await updateDoc(userDocRef, {
+    // Update user's enrolled courses using safe update
+    await safeUpdateUserDoc(userId, {
       enrolledCourses: arrayUnion(courseId)
     });
     
-    // Update course student count
-    const courseDocRef = doc(db, 'courses', courseId);
-    await updateDoc(courseDocRef, {
-      totalStudents: increment(1)
-    });
+    // Update course student count (optional, won't fail if course doc doesn't exist)
+    try {
+      const courseDocRef = doc(db, 'courses', courseId);
+      await updateDoc(courseDocRef, {
+        totalStudents: increment(1)
+      });
+    } catch (courseError) {
+      // Course document doesn't exist in Firestore (using mock data)
+      logger.log('Course document not found in Firestore (using mock data)');
+    }
     
     return { data: { id: docRef.id, ...enrollmentData } };
   } catch (error) {
-    console.error('Error enrolling in course:', error);
+    logger.error('Error enrolling in course:', error);
     return { error: error as Error };
   }
 };
@@ -215,7 +269,7 @@ export const getUserEnrollments = async (userId: string) => {
     })) as Enrollment[];
     return { data: enrollments };
   } catch (error) {
-    console.error('Error getting user enrollments:', error);
+    logger.error('Error getting user enrollments:', error);
     return { error: error as Error };
   }
 };
@@ -255,7 +309,7 @@ export const getUserEnrolledCourses = async (userId: string) => {
     
     return { data: coursesWithProgress };
   } catch (error) {
-    console.error('Error getting enrolled courses:', error);
+    logger.error('Error getting enrolled courses:', error);
     return { error: error as Error };
   }
 };
@@ -271,7 +325,7 @@ export const checkUserEnrollment = async (userId: string, courseId: string) => {
     const querySnapshot = await getDocs(q);
     return { data: !querySnapshot.empty };
   } catch (error) {
-    console.error('Error checking enrollment:', error);
+    logger.error('Error checking enrollment:', error);
     return { error: error as Error };
   }
 };
@@ -305,7 +359,7 @@ export const updateCourseProgress = async (
     
     return { error: new Error('Enrollment not found') };
   } catch (error) {
-    console.error('Error updating progress:', error);
+    logger.error('Error updating progress:', error);
     return { error: error as Error };
   }
 };
@@ -350,7 +404,7 @@ export const markLessonComplete = async (userId: string, courseId: string, lesso
     
     return { error: new Error('Enrollment not found') };
   } catch (error) {
-    console.error('Error marking lesson complete:', error);
+    logger.error('Error marking lesson complete:', error);
     return { error: error as Error };
   }
 };
@@ -406,15 +460,14 @@ export const getAllUsers = async (role?: 'student' | 'instructor' | 'admin') => 
     
     return { data: users };
   } catch (error) {
-    console.error('Error fetching users:', error);
+    logger.error('Error fetching users:', error);
     return { error: error as Error };
   }
 };
 
 export const updateUserRole = async (userId: string, newRole: 'student' | 'instructor' | 'admin', adminId: string) => {
   try {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
+    await safeUpdateUserDoc(userId, {
       role: newRole,
       updatedAt: serverTimestamp(),
       lastModifiedBy: adminId
@@ -432,15 +485,14 @@ export const updateUserRole = async (userId: string, newRole: 'student' | 'instr
     
     return { success: true };
   } catch (error) {
-    console.error('Error updating user role:', error);
+    logger.error('Error updating user role:', error);
     return { error: error as Error };
   }
 };
 
 export const updateUserStatus = async (userId: string, status: 'active' | 'suspended' | 'pending', adminId: string) => {
   try {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
+    await safeUpdateUserDoc(userId, {
       profileStatus: status,
       updatedAt: serverTimestamp(),
       lastModifiedBy: adminId
@@ -456,7 +508,7 @@ export const updateUserStatus = async (userId: string, status: 'active' | 'suspe
     
     return { success: true };
   } catch (error) {
-    console.error('Error updating user status:', error);
+    logger.error('Error updating user status:', error);
     return { error: error as Error };
   }
 };
@@ -464,15 +516,13 @@ export const updateUserStatus = async (userId: string, status: 'active' | 'suspe
 export const assignStudentToInstructor = async (instructorId: string, studentId: string, adminId: string, courseId?: string) => {
   try {
     // Update instructor's assigned students
-    const instructorRef = doc(db, 'users', instructorId);
-    await updateDoc(instructorRef, {
+    await safeUpdateUserDoc(instructorId, {
       assignedStudents: arrayUnion(studentId),
       updatedAt: serverTimestamp()
     });
     
     // Update student's assigned instructors
-    const studentRef = doc(db, 'users', studentId);
-    await updateDoc(studentRef, {
+    await safeUpdateUserDoc(studentId, {
       assignedInstructors: arrayUnion(instructorId),
       updatedAt: serverTimestamp()
     });
@@ -498,7 +548,7 @@ export const assignStudentToInstructor = async (instructorId: string, studentId:
     
     return { success: true };
   } catch (error) {
-    console.error('Error assigning student to instructor:', error);
+    logger.error('Error assigning student to instructor:', error);
     return { error: error as Error };
   }
 };
@@ -506,15 +556,13 @@ export const assignStudentToInstructor = async (instructorId: string, studentId:
 export const removeStudentFromInstructor = async (instructorId: string, studentId: string, adminId: string) => {
   try {
     // Update instructor's assigned students
-    const instructorRef = doc(db, 'users', instructorId);
-    await updateDoc(instructorRef, {
+    await safeUpdateUserDoc(instructorId, {
       assignedStudents: arrayRemove(studentId),
       updatedAt: serverTimestamp()
     });
     
     // Update student's assigned instructors
-    const studentRef = doc(db, 'users', studentId);
-    await updateDoc(studentRef, {
+    await safeUpdateUserDoc(studentId, {
       assignedInstructors: arrayRemove(instructorId),
       updatedAt: serverTimestamp()
     });
@@ -546,7 +594,7 @@ export const removeStudentFromInstructor = async (instructorId: string, studentI
     
     return { success: true };
   } catch (error) {
-    console.error('Error removing student from instructor:', error);
+    logger.error('Error removing student from instructor:', error);
     return { error: error as Error };
   }
 };
@@ -579,7 +627,7 @@ export const getInstructorStudents = async (instructorId: string) => {
     
     return { data: students };
   } catch (error) {
-    console.error('Error fetching instructor students:', error);
+    logger.error('Error fetching instructor students:', error);
     return { error: error as Error };
   }
 };
@@ -603,7 +651,7 @@ export const getUserManagementStats = async () => {
     
     return { data: stats };
   } catch (error) {
-    console.error('Error fetching user management stats:', error);
+    logger.error('Error fetching user management stats:', error);
     return { error: error as Error };
   }
 };
@@ -638,7 +686,7 @@ export const createAdminUser = async (adminData: {
     const docRef = await addDoc(collection(db, 'users'), adminUser);
     return { data: { id: docRef.id, ...adminUser } };
   } catch (error) {
-    console.error('Error creating admin user:', error);
+    logger.error('Error creating admin user:', error);
     return { error: error as Error };
   }
 };

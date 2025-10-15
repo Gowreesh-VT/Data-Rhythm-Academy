@@ -79,7 +79,7 @@ export const CourseReviews: React.FC<ReviewsProps> = ({
           id: '1',
           userId: 'user1',
           userName: 'Sarah Johnson',
-          userAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b1e6?w=100',
+          userAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
           rating: 5,
           title: 'Excellent course for beginners!',
           content: 'This course is absolutely fantastic! The instructor explains everything clearly and the hands-on projects really help solidify the concepts. I went from knowing nothing about data science to building my first machine learning model. Highly recommend!',

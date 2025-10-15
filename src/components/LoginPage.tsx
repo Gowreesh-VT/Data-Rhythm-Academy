@@ -10,6 +10,8 @@ import { Logo } from './ui/logo';
 import { NavigatePath } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthErrorDisplay, useAuthErrorHandler } from './AuthErrorDisplay';
+import { useToast } from '../contexts/ToastContext';
+import { loginSchema, validateAndSanitize } from '../utils/validation';
 import { 
   Eye, 
   EyeOff, 
@@ -34,12 +36,24 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<any>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const { signIn, signInWithOAuth } = useAuth();
   const { handleAuthError, isRetryableError } = useAuthErrorHandler();
+  const { error: showError } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setValidationErrors([]);
+    
+    // Validate form data
+    const validation = validateAndSanitize(loginSchema, formData);
+    if (!validation.success) {
+      setValidationErrors(validation.errors || []);
+      showError('Validation Error', validation.errors?.[0] || 'Please check your input');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {

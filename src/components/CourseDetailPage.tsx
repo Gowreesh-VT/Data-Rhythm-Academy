@@ -7,6 +7,8 @@ import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { useToast } from '../contexts/ToastContext';
+import { logger } from '../utils/logger';
 import { 
   Play, 
   Clock, 
@@ -34,6 +36,7 @@ interface CourseDetailPageProps {
 export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ onNavigate, onLogout }) => {
   const { courseId } = useParams<{ courseId: string }>();
   const { user } = useAuth();
+  const { success, error, warning } = useToast();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
@@ -60,7 +63,7 @@ By the end of this course, you'll have the skills to analyze complex datasets, c
         shortDescription: 'Master Python for Data Science from beginner to advanced level',
         instructorId: 'instructor1',
         instructorName: 'Dr. Sarah Johnson',
-        instructorImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b1e6?w=150',
+        instructorImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
         category: 'Data Science',
         level: 'Beginner',
         language: 'English',
@@ -221,8 +224,8 @@ By the end of this course, you'll have the skills to analyze complex datasets, c
       const { id: enrollmentId, error } = await dbHelpers.enrollInCourse(user.id, courseId);
       
       if (error) {
-        console.error('❌ Enrollment failed:', error);
-        alert('Failed to enroll in course. Please try again.');
+        logger.error('❌ Enrollment failed:', error);
+        error('Enrollment Failed', 'Failed to enroll in course. Please try again.');
         return;
       }
 
@@ -235,22 +238,26 @@ By the end of this course, you'll have the skills to analyze complex datasets, c
       }
       
       // Show success message and redirect to My Courses
-      alert('🎉 Successfully enrolled! Redirecting to your courses...');
+      success('Successfully Enrolled!', 'Redirecting to your courses...');
       setTimeout(() => {
         onNavigate('/my-courses');
       }, 1500);
       
-    } catch (error) {
-      console.error('❌ Error enrolling:', error);
-      alert('An unexpected error occurred. Please try again.');
+    } catch (err) {
+      console.error('❌ Error enrolling:', err);
+      error('Unexpected Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setEnrolling(false);
     }
   };
 
   const handleStartLearning = () => {
-    if (course && course.lessons.length > 0) {
+    if (course && course.lessons && course.lessons.length > 0) {
       onNavigate(`/lesson/${course.lessons[0].id}`);
+    } else {
+      // Fallback: if no lessons available, show a message or redirect to dashboard
+      warning('Course Not Ready', 'Course content is being prepared. Please check back later.');
+      onNavigate('/my-courses');
     }
   };
 

@@ -51,18 +51,13 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
   const features = [
     {
       icon: <PlayCircle className="w-8 h-8" />,
-      title: "HD Video Learning",
-      description: "High-quality video lessons with multiple resolutions and playback speeds"
+      title: "Online Classes",
+      description: "High-quality online classes with multiple resolutions and playback speeds"
     },
     {
       icon: <Smartphone className="w-8 h-8" />,
       title: "Mobile Learning",
       description: "Access courses on any device - phone, tablet, or desktop with seamless sync"
-    },
-    {
-      icon: <Download className="w-8 h-8" />,
-      title: "Offline Access",
-      description: "Download lessons for offline viewing and learn without internet"
     },
     {
       icon: <Clock className="w-8 h-8" />,
@@ -73,11 +68,6 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
       icon: <Award className="w-8 h-8" />,
       title: "Digital Certificates",
       description: "Earn verified certificates upon completion to boost your career"
-    },
-    {
-      icon: <MessageCircle className="w-8 h-8" />,
-      title: "Interactive Community",
-      description: "Connect with instructors and peers through course discussions"
     }
   ];
 
@@ -86,163 +76,127 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
       title: "Introduction To Python",
       description: "Master Python programming from Basics and get started with programming",
       price: "₹1000",
-      rating: 4.75,
-      students: "500",
+      rating: 4.9,
+      students: "5,670+",
       duration: "4 weeks",
       image: "https://images.unsplash.com/photo-1649180556628-9ba704115795?q=80&w=2062&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
       title: "Python Programming Adv.",
       description: "Complete Python bootcamp from basics to advanced web scraping and automation",
-      price: "$199",
-      rating: 4.8,
-      students: "4,567",
-      duration: "10 weeks",
-      image: "https://images.unsplash.com/photo-1526379879527-8559ecfcaec0?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-    },
-    {
-      title: "Front-End Web Development",
-      description: "Create beautiful and functional designs using JavaScript, React, and responsive design",
-      price: "$249",
-      rating: 4.9,
-      students: "3,156",
-      duration: "10 weeks",
+      price: "₹1500",
+      rating: 4.85,
+      students: "3,876+",
+      duration: "8 weeks",
       image: "https://images.unsplash.com/photo-1593720213428-28a5b9e94613?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
-    {
-      title: "Back-End Development",
-      description: "Build robust server-side applications with Node.js and Express and databases",
-      price: "$349",
-      rating: 4.7,
-      students: "1,654",
-      duration: "14 weeks",
-      image: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=2034&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        {
+      title: "DSA in Python",
+      description: "Comprehensive guide to data structures and algorithms using Python",
+      price: "₹1250",
+      rating: 4.5,
+      students: "475+",
+      duration: "10 weeks",
+      image: "https://images.unsplash.com/photo-1518186285589-2f7649de83e0?q=80&w=2074&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
-    {
-      title: "Full-Stack Development",
-      description: "Design and develop complete web applications using the MERN stack",
-      price: "$429",
-      rating: 4.8,
-      students: "2,134",
-      duration: "18 weeks",
-      image: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        {
+      title: "Introduction to SQL",
+      description: "Master SQL for data analysis and manipulation",
+      price: "₹1000",
+      rating: 4.75,
+      students: "1,296+",
+      duration: "8 weeks",
+      image: "https://images.unsplash.com/photo-1544383835-bda2bc66a55d?q=80&w=2021&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+    },
+        {
+      title: "Data Science and Analytics",
+      description: "Comprehensive data science course with Python, R, and real-world datasets",
+      price: "₹1000",
+      rating: 4.7,
+      students: "1,890+",
+      duration: "12 weeks",
+      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
       title: "Foundation in Machine Learning",
       description: "Deep dive into ML algorithms, neural networks, and artificial intelligence",
-      price: "$449",
-      rating: 4.8,
-      students: "2,567",
-      duration: "20 weeks",
-      image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2062&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-    },
-    {
-      title: "Data Science and Analytics",
-      description: "Comprehensive data science course with Python, R, and real-world datasets",
-      price: "$329",
-      rating: 4.7,
-      students: "1,890",
-      duration: "14 weeks",
-      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-    },
-    {
-      title: "Foundations in Deep Learning",
-      description: "Hands-on deep learning with TensorFlow, Keras, and real-world projects",
-      price: "$279",
-      rating: 4.6,
-      students: "2,345",
+      price: "₹1250",
+      rating: 4.75,
+      students: "1,567+",
       duration: "12 weeks",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-    },
-    {
-      title: "DSA in Python",
-      description: "Comprehensive guide to data structures and algorithms using Python",
-      price: "$229",
-      rating: 4.5,
-      students: "3,234",
-      duration: "9 weeks",
-      image: "https://images.unsplash.com/photo-1518186285589-2f7649de83e0?q=80&w=2074&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-    },
-    {
-      title: "Introduction to SQL",
-      description: "Master SQL for data analysis and manipulation",
-      price: "$249",
-      rating: 4.7,
-      students: "2,789",
-      duration: "11 weeks",
-      image: "https://images.unsplash.com/photo-1544383835-bda2bc66a55d?q=80&w=2021&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+      image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2062&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     }
   ];
 
   const testimonials = [
     {
-      name: "Sarah Chen",
-      role: "Software Engineer at Google",
-      content: "This platform transformed my career. The mentorship program was invaluable, and I landed my dream job within 3 months of completing the course.",
+      name: "Aarav Mehta",
+      role: "Software Developer at TCS",
+      content: "This platform completely changed the way I learn. The support they gave helped me land my first job within a few months.",
       rating: 5,
-      avatar: "SC"
+      avatar: "AM"
     },
     {
-      name: "Marcus Rodriguez",
-      role: "Data Scientist at Microsoft",
-      content: "The hands-on projects and real-world applications made all the difference. I went from complete beginner to confident professional.",
+      name: "Priya Nair",
+      role: "Data Analyst at Infosys",
+      content: "The hands-on projects and case studies made the concepts so clear. I gained real-world experience that set me apart during placements.",
       rating: 5,
-      avatar: "MR"
+      avatar: "PN"
     },
     {
-      name: "Emily Johnson",
-      role: "UX Designer at Airbnb",
-      content: "Excellent course structure and amazing community. The portfolio I built here directly led to my current position.",
+      name: "Rohan Gupta",
+      role: "UI/UX Designer at Zoho",
+      content: "The course structure was well-organized, and the community was super helpful. My design portfolio built here directly helped me secure my current role.",
       rating: 5,
-      avatar: "EJ"
+      avatar: "RG"
     }
   ];
 
-  const pricingPlans = [
-    {
-      name: "Starter",
-      price: "₹1000",
-      period: "/month",
-      description: "Perfect for individual learners",
-      features: [
-        "Access to basic courses",
-        "Community support",
-        "Mobile app access",
-        "Progress tracking"
-      ],
-      popular: false
-    },
-    {
-      name: "Professional",
-      price: "₹2500",
-      period: "/month", 
-      description: "Best for serious learners",
-      features: [
-        "Access to all courses",
-        "1-on-1 mentorship",
-        "Project reviews",
-        "Career guidance",
-        "Certificate of completion",
-        "Priority support"
-      ],
-      popular: true
-    },
-    {
-      name: "Enterprise",
-      price: "₹5000",
-      period: "/month",
-      description: "For teams and organizations",
-      features: [
-        "Everything in Professional",
-        "Team dashboard",
-        "Custom learning paths",
-        "Advanced analytics",
-        "Dedicated account manager",
-        "Custom integrations"
-      ],
-      popular: false
-    }
-  ];
+  // const pricingPlans = [
+  //   {
+  //     name: "Starter",
+  //     price: "₹1000",
+  //     period: "/month",
+  //     description: "Perfect for individual learners",
+  //     features: [
+  //       "Access to basic courses",
+  //       "Community support",
+  //       "Mobile app access",
+  //       "Progress tracking"
+  //     ],
+  //     popular: false
+  //   },
+  //   {
+  //     name: "Professional",
+  //     price: "₹2500",
+  //     period: "/month", 
+  //     description: "Best for serious learners",
+  //     features: [
+  //       "Access to all courses",
+  //       "1-on-1 mentorship",
+  //       "Project reviews",
+  //       "Career guidance",
+  //       "Certificate of completion",
+  //       "Priority support"
+  //     ],
+  //     popular: true
+  //   },
+  //   {
+  //     name: "Enterprise",
+  //     price: "₹5000",
+  //     period: "/month",
+  //     description: "For teams and organizations",
+  //     features: [
+  //       "Everything in Professional",
+  //       "Team dashboard",
+  //       "Custom learning paths",
+  //       "Advanced analytics",
+  //       "Dedicated account manager",
+  //       "Custom integrations"
+  //     ],
+  //     popular: false
+  //   }
+  // ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
@@ -256,7 +210,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
             >
               <Logo size="md" className="text-blue-600" />
               <span className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                Data Rythym Academy
+                Data Rhythm Academy
               </span>
             </button>
             
@@ -268,7 +222,13 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               >
                 Courses
               </button>
-              <a href="#pricing" className="text-gray-600 hover:text-blue-600 transition-colors">Pricing</a>
+              <button 
+                onClick={() => onNavigate('/about')}
+                className="text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                About Us
+              </button>
+              {/* <a href="#pricing" className="text-gray-600 hover:text-blue-600 transition-colors">Pricing</a> */}
               <a href="#testimonials" className="text-gray-600 hover:text-blue-600 transition-colors">Reviews</a>
             </div>
 
@@ -328,7 +288,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
                   onClick={() => onNavigate('/register')}
                 >
                   <PlayCircle className="mr-2 w-5 h-5" />
-                  Start Learning Free
+                  Start Learning
                 </Button>
               </div>
 
@@ -336,11 +296,11 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               <div className="flex items-center space-x-8 text-sm text-gray-500">
                 <div className="flex items-center space-x-2">
                   <PlayCircle className="w-5 h-5 text-blue-400" />
-                  <span>HD Video Quality</span>
+                  <span>Online Classes</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Download className="w-5 h-5 text-green-400" />
-                  <span>Offline Downloads</span>
+                  <span>Recorded Sessions</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Award className="w-5 h-5 text-yellow-400" />
@@ -357,8 +317,8 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
             >
               <div className="relative z-10">
                 <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1531545514256-b1400bc00f31?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0ZWFtJTIwY29sbGFib3JhdGlvbiUyMG1lZXRpbmd8ZW58MXx8fHwxNzU4NDA4NjQ3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                  alt="Team collaboration"
+                  src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                  alt="Students learning together in modern classroom"
                   className="rounded-2xl shadow-2xl w-full h-auto"
                 />
               </div>
@@ -496,12 +456,23 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
                     <CardDescription className="text-gray-600 mb-4">
                       {course.description}
                     </CardDescription>
-                    <Button 
-                      className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
-                      onClick={() => onNavigate('/register')}
-                    >
-                      Enroll Now
-                    </Button>
+                    {course.title === "Introduction To Python" ? (
+                      <Button 
+                        className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
+                        onClick={() => onNavigate('/register')}
+                      >
+                        Enroll Now
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="outline"
+                        className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"
+                        onClick={() => onNavigate('/contact')}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Contact Us
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -568,7 +539,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8">
+      {/* <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -636,7 +607,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-16">
@@ -655,27 +626,81 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
             <div>
               <h4 className="font-semibold mb-4">Courses</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Web Development</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Data Science</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">UX/UI Design</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Digital Marketing</a></li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/courses')} 
+                    className="hover:text-white transition-colors text-left">
+                    Introduction to Python
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/courses')} 
+                    className="hover:text-white transition-colors text-left">
+                    Data Science
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/courses')} 
+                    className="hover:text-white transition-colors text-left">
+                    DSA in Python
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/courses')} 
+                    className="hover:text-white transition-colors text-left">
+                    Machine Learning
+                  </button>
+                </li>
               </ul>
             </div>
             
             <div>
               <h4 className="font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/about')} 
+                    className="hover:text-white transition-colors text-left">
+                    About Us
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/courses')} 
+                    className="hover:text-white transition-colors text-left">
+                    Careers
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/courses')} 
+                    className="hover:text-white transition-colors text-left">
+                    Blog
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/contact')} 
+                    className="hover:text-white transition-colors text-left">
+                    Contact
+                  </button>
+                </li>
               </ul>
             </div>
             
             <div>
               <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Help Center</a></li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/contact')} 
+                    className="hover:text-white transition-colors text-left">
+                    Help Center
+                  </button>
+                </li>
                 <li>
                   <button 
                     onClick={() => onNavigate('/privacy')} 
@@ -684,8 +709,21 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
                     Privacy Policy
                   </button>
                 </li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Refund Policy</a></li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/privacy')} 
+                    className="hover:text-white transition-colors text-left"
+                  >
+                    Terms of Service
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => onNavigate('/contact')} 
+                    className="hover:text-white transition-colors text-left">
+                    Refund Policy
+                  </button>
+                </li>
               </ul>
             </div>
           </div>

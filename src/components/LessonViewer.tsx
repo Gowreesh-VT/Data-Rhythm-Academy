@@ -127,7 +127,23 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({ onNavigate, onLogout
         mobileAccess: true,
         lifetimeAccess: true,
         completionCertificate: true,
-        closedCaptions: true
+        closedCaptions: true,
+        // Scheduled class features
+        scheduledClasses: [],
+        classSchedule: {
+          courseId: '1',
+          pattern: 'weekly',
+          daysOfWeek: [1, 3], // Monday & Wednesday
+          startTime: '10:00',
+          duration: 90,
+          timezone: 'UTC',
+          startDate: new Date(),
+          endDate: new Date(),
+          totalClasses: 12,
+          classFrequency: 'Every Monday & Wednesday'
+        },
+        recordedClassesAvailable: true,
+        classNotifications: true
       };
 
       setLesson(mockLesson);

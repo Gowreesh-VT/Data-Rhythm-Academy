@@ -12,6 +12,8 @@ import { ImageWithFallback } from './ImageWithFallback';
 import { Logo } from './ui/logo';
 import { Page } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { userRegistrationSchema, validateAndSanitize } from '../utils/validation';
 import { 
   User, 
   Mail, 
@@ -38,7 +40,9 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const { signUp, signInWithOAuth } = useAuth();
+  const { error: showError, success } = useToast();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -55,11 +59,12 @@ export function RegisterPage({ onNavigate, onRegister }: RegisterPageProps) {
   const progress = (step / totalSteps) * 100;
 
   const courses = [
-    { value: 'fullstack', label: 'Full-Stack Web Development', duration: '12 weeks', price: '$299' },
-    { value: 'datascience', label: 'Data Science & Analytics', duration: '16 weeks', price: '$399' },
-    { value: 'uxui', label: 'UX/UI Design Mastery', duration: '10 weeks', price: '$249' },
-    { value: 'marketing', label: 'Digital Marketing', duration: '8 weeks', price: '$199' },
-    { value: 'mobile', label: 'Mobile App Development', duration: '14 weeks', price: '$349' }
+    { value: 'python', label: 'Introduction To Python', duration : '4 weeks', price: '₹1000'},
+    { value: 'python adv', label: 'Python Programming Advanced', duration: '8 weeks', price: '₹1500' },
+    { value: 'dsa', label: 'DSA in Python', duration: '10 weeks', price: '₹1250'},
+    { value: 'sql', label: 'Introduction To SQL', duration: '8 weeks', price: '₹1000' },
+    { value: 'DS', label: 'Data Science & Analytics', duration: '12 weeks', price: '₹1000' },
+    { value: 'ML', label: 'Foundation in Machine Learning', duration: '12 weeks', price: '₹1250' }
   ];
 
   const experienceLevels = [

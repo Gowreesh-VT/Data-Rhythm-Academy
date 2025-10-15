@@ -14,6 +14,7 @@ export type NavigatePath =
   | "/login" 
   | "/register"
   | "/privacy"
+  | "/about"
   | "/courses"
   | "/course/:id"
   | "/lesson/:id"
@@ -22,7 +23,7 @@ export type NavigatePath =
   | "/admin-dashboard"
   | "/wishlist"
   | "/profile"
-  | "/booking";
+  | "/contact";
 
 // Course-related types
 export interface User {

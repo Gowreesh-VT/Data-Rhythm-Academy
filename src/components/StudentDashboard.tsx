@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Skeleton } from './ui/skeleton';
+import { DashboardSkeleton } from './LoadingStates';
 import { 
   BookOpen, 
   Award, 
@@ -19,7 +21,14 @@ import {
   Flame,
   Trophy,
   Zap,
-  BarChart3
+  BarChart3,
+  User,
+  CreditCard,
+  MessageCircle,
+  Settings,
+  LogOut,
+  GraduationCap,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserEnrolledCourses, getUserEnrollments } from '../lib/database';
@@ -181,49 +190,151 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      {/* Enhanced Navigation Header */}
+      <header className="bg-white shadow-sm border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
+            {/* Logo */}
             <div className="flex items-center">
               <h1 className="text-2xl font-bold text-blue-600 cursor-pointer" onClick={() => onNavigate('/')}>
+                <GraduationCap className="w-8 h-8 inline-block mr-2" />
                 Data Rhythm Academy
               </h1>
             </div>
-            <nav className="hidden md:flex space-x-8">
-              <button onClick={() => onNavigate('/courses')} className="text-gray-700 hover:text-blue-600">
+
+            {/* Main Navigation */}
+            <nav className="hidden lg:flex space-x-1">
+              <button 
+                onClick={() => onNavigate('/courses')} 
+                className="flex items-center px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <BookOpen className="w-4 h-4 mr-2" />
                 Browse Courses
               </button>
-              <button onClick={() => onNavigate('/my-courses')} className="text-blue-600 font-medium">
-                My Dashboard
+              <button 
+                onClick={() => onNavigate('/my-courses')} 
+                className="flex items-center px-4 py-2 text-blue-600 bg-blue-50 font-medium rounded-lg"
+              >
+                <PlayCircle className="w-4 h-4 mr-2" />
+                My Courses
               </button>
-              <button onClick={() => onNavigate('/wishlist')} className="text-gray-700 hover:text-blue-600 flex items-center">
-                <Heart className="w-4 h-4 mr-1" />
+              <button 
+                onClick={() => onNavigate('/wishlist')} 
+                className="flex items-center px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <Heart className="w-4 h-4 mr-2" />
                 Wishlist
               </button>
-              {user?.role === 'instructor' && (
-                <button onClick={() => onNavigate('/instructor-dashboard')} className="text-gray-700 hover:text-blue-600">
-                  Instructor Dashboard
-                </button>
-              )}
+              <button 
+                onClick={() => onNavigate('/transactions')} 
+                className="flex items-center px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                Transactions
+              </button>
+              <button 
+                onClick={() => onNavigate('/certificates')} 
+                className="flex items-center px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <Award className="w-4 h-4 mr-2" />
+                Certificates
+              </button>
+              <button 
+                onClick={() => onNavigate('/contact')} 
+                className="flex items-center px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Contact Us
+              </button>
             </nav>
+
+            {/* Right Side - User Menu */}
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">Hello, {user?.displayName || user?.email}</span>
-              <Button variant="outline" size="sm" onClick={onLogout}>
+              {/* Notifications */}
+              <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <Bell className="w-5 h-5" />
+              </button>
+
+              {/* User Profile Dropdown */}
+              <div className="relative">
+                <button 
+                  onClick={() => onNavigate('/profile')}
+                  className="flex items-center space-x-3 p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="hidden md:block text-left">
+                    <p className="text-sm font-medium">{user?.displayName || 'Student'}</p>
+                    <p className="text-xs text-gray-500">{user?.email}</p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Settings & Logout */}
+              <button 
+                onClick={() => onNavigate('/settings')}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+              <Button variant="outline" size="sm" onClick={onLogout} className="flex items-center">
+                <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
+            </div>
+          </div>
+
+          {/* Mobile Navigation */}
+          <div className="lg:hidden border-t pt-4 pb-4">
+            <div className="grid grid-cols-3 gap-2">
+              <button 
+                onClick={() => onNavigate('/courses')}
+                className="flex flex-col items-center p-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <BookOpen className="w-5 h-5 mb-1" />
+                <span className="text-xs">Browse</span>
+              </button>
+              <button 
+                onClick={() => onNavigate('/my-courses')}
+                className="flex flex-col items-center p-3 text-blue-600 bg-blue-50 rounded-lg"
+              >
+                <PlayCircle className="w-5 h-5 mb-1" />
+                <span className="text-xs font-medium">My Courses</span>
+              </button>
+              <button 
+                onClick={() => onNavigate('/wishlist')}
+                className="flex flex-col items-center p-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <Heart className="w-5 h-5 mb-1" />
+                <span className="text-xs">Wishlist</span>
+              </button>
+              <button 
+                onClick={() => onNavigate('/transactions')}
+                className="flex flex-col items-center p-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <CreditCard className="w-5 h-5 mb-1" />
+                <span className="text-xs">Payments</span>
+              </button>
+              <button 
+                onClick={() => onNavigate('/certificates')}
+                className="flex flex-col items-center p-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <Award className="w-5 h-5 mb-1" />
+                <span className="text-xs">Certificates</span>
+              </button>
+              <button 
+                onClick={() => onNavigate('/contact')}
+                className="flex flex-col items-center p-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <MessageCircle className="w-5 h-5 mb-1" />
+                <span className="text-xs">Contact</span>
+              </button>
             </div>
           </div>
         </div>

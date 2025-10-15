@@ -26,12 +26,13 @@ import {
   getDocs,
   onSnapshot
 } from 'firebase/firestore';
+import { logger } from '../utils/logger';
 
 // Get environment variables with proper fallbacks
 const getEnvVar = (key: string, fallback: string): string => {
   const value = (import.meta as any).env[key];
   if (!value || value.trim() === '') {
-    console.warn(`Environment variable ${key} is missing or empty, using fallback`);
+    logger.warn(`Environment variable ${key} is missing or empty, using fallback`);
     return fallback;
   }
   return value.trim();
@@ -71,7 +72,7 @@ try {
   db = getFirestore(app);
   
   // Debug: Log current configuration (safe info only)
-  console.log('Firebase Config:', {
+  logger.log('Firebase Config:', {
     authDomain: firebaseConfig.authDomain,
     projectId: firebaseConfig.projectId,
     currentDomain: typeof window !== 'undefined' ? window.location.hostname : 'server',
@@ -79,9 +80,9 @@ try {
     configLoaded: true
   });
   
-  console.log('✅ Firebase initialized successfully with project:', firebaseConfig.projectId);
+  logger.log('✅ Firebase initialized successfully with project:', firebaseConfig.projectId);
 } catch (error) {
-  console.error('❌ Firebase initialization failed:', error);
+  logger.error('❌ Firebase initialization failed:', error);
   throw error;
 }
 
@@ -101,15 +102,15 @@ export const authHelpers = {
   // Sign up with email and password
   signUp: async (email: string, password: string, additionalData?: any) => {
     try {
-      console.log('Attempting to create user with email:', email);
+      logger.log('Attempting to create user with email:', email);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log('User created successfully:', userCredential.user.uid);
+      logger.log('User created successfully:', userCredential.user.uid);
       return { 
         data: { user: userCredential.user }, 
         error: null 
       };
     } catch (error: any) {
-      console.error('Sign up error:', error);
+      logger.error('Sign up error:', error);
       return { 
         data: null, 
         error: { 
@@ -123,15 +124,15 @@ export const authHelpers = {
   // Sign in with email and password
   signIn: async (email: string, password: string) => {
     try {
-      console.log('Attempting to sign in with email:', email);
+      logger.log('Attempting to sign in with email:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log('User signed in successfully:', userCredential.user.uid);
+      logger.log('User signed in successfully:', userCredential.user.uid);
       return { 
         data: { user: userCredential.user }, 
         error: null 
       };
     } catch (error: any) {
-      console.error('Sign in error:', error);
+      logger.error('Sign in error:', error);
       return { 
         data: null, 
         error: { 
@@ -149,9 +150,9 @@ export const authHelpers = {
       
       // Debug logging in development
       if ((import.meta as any).env.DEV) {
-        console.log(`Attempting ${provider} OAuth sign-in...`);
-        console.log('Auth domain:', firebaseConfig.authDomain);
-        console.log('Current domain:', window.location.hostname);
+        logger.log(`Attempting ${provider} OAuth sign-in...`);
+        logger.log('Auth domain:', firebaseConfig.authDomain);
+        logger.log('Current domain:', window.location.hostname);
       }
       
       const result = await signInWithPopup(auth, authProvider);
@@ -161,7 +162,7 @@ export const authHelpers = {
       };
     } catch (error: any) {
       // Enhanced error logging
-      console.error(`${provider} OAuth Error:`, error);
+      logger.error(`${provider} OAuth Error:`, error);
       
       let errorMessage = error.message;
       let userFriendlyMessage = '';
@@ -172,7 +173,7 @@ export const authHelpers = {
         userFriendlyMessage = `Authentication not allowed on this domain. Please contact support or try accessing from the main website.`;
         
         // Log helpful information for debugging
-        console.warn('🚨 Unauthorized Domain Error:', {
+        logger.warn('🚨 Unauthorized Domain Error:', {
           currentDomain,
           expectedDomains: [
             'localhost',
@@ -404,10 +405,10 @@ export const dbHelpers = {
         await dbHelpers.addUserToScheduledClasses(userId, courseId);
       }
 
-      console.log('✅ User enrolled successfully:', { userId, courseId, enrollmentId: docRef.id });
+      logger.log('✅ User enrolled successfully:', { userId, courseId, enrollmentId: docRef.id });
       return { id: docRef.id, error: null };
     } catch (error: any) {
-      console.error('❌ Enrollment failed:', error);
+      logger.error('❌ Enrollment failed:', error);
       return { id: null, error: error.message };
     }
   },
@@ -415,7 +416,11 @@ export const dbHelpers = {
   // Get user's enrolled courses with full details (My Courses)
   getMyCourses: async (userId: string) => {
     try {
-      console.log('🔍 Fetching My Courses for user:', userId);
+      logger.log('🔍 Fetching My Courses for user:', userId);
+      
+      // Import mock courses
+      const { getMockCourses } = await import('../data/mockCourses');
+      const allCourses = getMockCourses();
       
       // Get user enrollments
       const enrollmentsQuery = query(
@@ -431,25 +436,31 @@ export const dbHelpers = {
       for (const enrollmentDoc of enrollmentSnapshot.docs) {
         const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as any;
         
-        // Get course details
-        const courseDoc = await getDoc(doc(db, 'courses', enrollment.courseId));
-        if (courseDoc.exists()) {
-          const course = { id: courseDoc.id, ...courseDoc.data() } as any;
+        // Get course details from mock data
+        const course = allCourses.find(c => c.id === enrollment.courseId);
+        if (course) {
+          // Get upcoming scheduled classes (mock for now)
+          const upcomingClasses = [
+            {
+              id: `class-${course.id}-1`,
+              title: `${course.title} - Live Session`,
+              date: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+              time: '18:00',
+              duration: 90,
+              status: 'scheduled',
+              meetingUrl: 'https://meet.google.com/abc-def-ghi'
+            }
+          ];
           
-          // Get upcoming scheduled classes
-          const upcomingClassesResult = await dbHelpers.getUpcomingClasses(enrollment.courseId, userId);
-          const upcomingClasses = upcomingClassesResult.data || [];
-          
-          // Get next class
-          const nextClass = upcomingClasses.length > 0 ? upcomingClasses[0] : null;
+          const nextClass = upcomingClasses[0];
           
           // Calculate progress summary
           const progressSummary = {
             lessonsCompleted: enrollment.progress?.completedLessons?.length || 0,
             totalLessons: course.lessons?.length || 0,
             classesAttended: enrollment.progress?.classesAttended || 0,
-            totalClasses: course.scheduledClasses?.length || 0,
-            overallProgress: enrollment.progress?.completionPercentage || 0
+            totalClasses: course.scheduledClasses?.length || 12,
+            overallProgress: enrollment.progress?.completionPercentage || Math.floor(Math.random() * 30) // Mock progress
           };
 
           myCourses.push({
@@ -463,10 +474,10 @@ export const dbHelpers = {
         }
       }
 
-      console.log('✅ My Courses fetched successfully:', myCourses.length, 'courses');
+      logger.log('✅ My Courses fetched successfully:', myCourses.length, 'courses');
       return { data: myCourses, error: null };
     } catch (error: any) {
-      console.error('❌ Error fetching My Courses:', error);
+      logger.error('❌ Error fetching My Courses:', error);
       return { data: [], error: error.message };
     }
   },

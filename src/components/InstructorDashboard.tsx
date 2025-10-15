@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useToast } from '../contexts/ToastContext';
+import { logger } from '../utils/logger';
 import { 
   BookOpen, 
   Users, 
@@ -32,6 +34,7 @@ interface InstructorDashboardProps {
 
 export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ onNavigate, onLogout }) => {
   const { user } = useAuth();
+  const { success, error: showError } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateCourse, setShowCreateCourse] = useState(false);
@@ -145,7 +148,7 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ onNavi
       const result = await createCourse(courseData);
       if (result.error) {
         console.error('Error creating course:', result.error);
-        alert('Error creating course. Please try again.');
+        showError('Course Creation Failed', 'Error creating course. Please try again.');
       } else {
         console.log('Course created successfully:', result.data);
         setShowCreateCourse(false);
@@ -169,7 +172,7 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ onNavi
       }
     } catch (error) {
       console.error('Error creating course:', error);
-      alert('Error creating course. Please try again.');
+      showError('Course Creation Failed', 'Error creating course. Please try again.');
     }
   };
 

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { ToastProvider } from "./contexts/ToastContext";
 import { LandingPage } from "./components/LandingPage";
 import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
+import { AboutPage } from "./components/AboutPage";
 import { CoursesPage } from "./components/CoursesPage";
 import { StudentDashboard } from "./components/StudentDashboard";
 import { MyCoursesPage } from "./components/MyCoursesPage";
@@ -14,6 +16,7 @@ import { CourseDetailPage } from "./components/CourseDetailPage";
 import { LessonViewer } from "./components/LessonViewer";
 import { UserProfilePage } from "./components/UserProfilePage";
 import { WishlistPage } from "./components/WishlistPage";
+import { ContactPage } from "./components/ContactPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useNetworkStatus, OfflineNotification } from "./hooks/useNetworkStatus";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -164,6 +167,14 @@ function AppContent() {
         }
       />
       <Route
+        path="/about"
+        element={
+          <AboutPage
+            onNavigate={handleNavigate}
+          />
+        }
+      />
+      <Route
         path="/courses"
         element={
           <CoursesPage
@@ -235,6 +246,14 @@ function AppContent() {
           />
         }
       />
+      <Route
+        path="/contact"
+        element={
+          <ContactPage
+            onNavigate={handleNavigate}
+          />
+        }
+      />
     </Routes>
     </>
   );
@@ -244,7 +263,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <AppContent />
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
