@@ -28,10 +28,10 @@ interface AboutPageProps {
 export function AboutPage({ onNavigate }: AboutPageProps) {
   const teamMembers = [
     {
-      name: "Gowreesh VT",
+      name: "Dr.Hemalatha",
       role: "Founder & CEO",
-      bio: "Passionate educator with 5+ years in tech education and software development",
-      image: "https://api.dicebear.com/7.x/avataaars/svg?seed=gowreesh&backgroundColor=3b82f6",
+      bio: "Passionate educator with 15+ years in tech education and software development",
+      image: "https://api.dicebear.com/7.x/avataaars/svg?seed=hemalatha&backgroundColor=3b82f6",
       expertise: ["Python", "Data Science", "Machine Learning", "Web Development"]
     },
     {
@@ -301,16 +301,13 @@ export function AboutPage({ onNavigate }: AboutPageProps) {
               <Button 
                 size="lg"
                 className="bg-white text-blue-600 hover:bg-gray-50"
-                onClick={() => onNavigate('/courses')}
-              >
+                onClick={() => onNavigate('/courses')}>
                 Browse Courses
               </Button>
               <Button 
                 size="lg"
-                variant="outline"
-                className="border-white text-white hover:bg-white hover:text-blue-600"
-                onClick={() => onNavigate('/contact')}
-              >
+                className="bg-white text-blue-600 hover:bg-gray-50"
+                onClick={() => onNavigate('/contact')}>
                 Contact Us
               </Button>
             </div>

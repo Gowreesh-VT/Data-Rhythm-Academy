@@ -38,6 +38,7 @@ import {
   getInstructorStudents,
   getUserManagementStats
 } from '../lib/database';
+import { logger } from '../utils/logger';
 
 interface AdminDashboardProps {
   onNavigate: (path: NavigatePath) => void;
@@ -47,6 +48,7 @@ interface AdminDashboardProps {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<UserManagementData | null>(null);
@@ -72,24 +74,116 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
 
   const loadAdminData = async () => {
     setLoading(true);
+    setError(null);
     try {
+      logger.info('Loading admin data...');
+      
       // Load all users
       const usersResult = await getAllUsers();
-      if (usersResult.data) {
+      if (usersResult.error) {
+        logger.error('Error loading users:', usersResult.error);
+        setError('Failed to load users data');
+        // Set mock data for testing if no real data exists
+        setUsers(getMockUsers());
+        setStats(getMockStats());
+      } else if (usersResult.data) {
+        logger.info(`Loaded ${usersResult.data.length} users`);
         setUsers(usersResult.data);
-      }
-
-      // Load management stats
-      const statsResult = await getUserManagementStats();
-      if (statsResult.data) {
-        setStats(statsResult.data);
+        
+        // Load management stats
+        const statsResult = await getUserManagementStats();
+        if (statsResult.error) {
+          logger.error('Error loading stats:', statsResult.error);
+          setStats(getMockStats());
+        } else if (statsResult.data) {
+          setStats(statsResult.data);
+        }
+      } else {
+        // No users found, provide mock data for testing
+        logger.info('No users found, using mock data');
+        setUsers(getMockUsers());
+        setStats(getMockStats());
       }
     } catch (error) {
-      console.error('Error loading admin data:', error);
+      logger.error('Error loading admin data:', error);
+      setError('Failed to load admin data');
+      // Fallback to mock data
+      setUsers(getMockUsers());
+      setStats(getMockStats());
     } finally {
       setLoading(false);
     }
   };
+
+  // Mock data for testing when Firestore is empty
+  const getMockUsers = (): User[] => [
+    {
+      id: 'mock-student-1',
+      email: 'student1@example.com',
+      displayName: 'John Doe',
+      role: 'student',
+      profileStatus: 'active',
+      enrolledCourses: ['1', '2'],
+      createdCourses: [],
+      assignedInstructors: [],
+      assignedStudents: [],
+      createdAt: new Date(),
+      lastLoginAt: new Date(),
+      lastActivity: new Date(),
+      bio: 'Aspiring Python developer'
+    },
+    {
+      id: 'mock-instructor-1',
+      email: 'instructor@example.com',
+      displayName: 'Dr. Sarah Johnson',
+      role: 'instructor',
+      profileStatus: 'active',
+      enrolledCourses: [],
+      createdCourses: ['1', '2'],
+      assignedInstructors: [],
+      assignedStudents: ['mock-student-1'],
+      createdAt: new Date(),
+      lastLoginAt: new Date(),
+      lastActivity: new Date(),
+      bio: 'Data Science Expert with 8+ years experience'
+    },
+    {
+      id: 'mock-admin-1',
+      email: 'admin@example.com',
+      displayName: 'Admin User',
+      role: 'admin',
+      profileStatus: 'active',
+      enrolledCourses: [],
+      createdCourses: [],
+      assignedInstructors: [],
+      assignedStudents: [],
+      createdAt: new Date(),
+      lastLoginAt: new Date(),
+      lastActivity: new Date(),
+      permissions: {
+        canManageUsers: true,
+        canManageCourses: true,
+        canViewAnalytics: true,
+        canManagePayments: true,
+        canManageContent: true,
+        canAccessSystemSettings: true,
+        canChangeUserRoles: true,
+        canSuspendUsers: true,
+        canDeleteUsers: true,
+        canAssignInstructorStudents: true
+      }
+    }
+  ];
+
+  const getMockStats = (): UserManagementData => ({
+    totalUsers: 3,
+    totalStudents: 1,
+    totalInstructors: 1,
+    totalAdmins: 1,
+    activeUsers: 3,
+    suspendedUsers: 0,
+    recentSignups: getMockUsers().slice(0, 3)
+  });
 
   const filterUsers = () => {
     let filtered = users;
@@ -256,8 +350,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        {stats && (
+        {/* Error State */}
+        {error && (
+          <Alert className="mb-6 border-red-200 bg-red-50">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800">
+              {error}
+              <div className="flex space-x-2 mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={loadAdminData}
+                >
+                  Retry
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setError(null);
+                    setUsers(getMockUsers());
+                    setStats(getMockStats());
+                  }}
+                >
+                  Use Demo Data
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading admin dashboard...</p>
+          </div>
+        )}
+
+        {/* Dashboard Content */}
+        {!loading && (
+          <>
+            {/* Demo Data Notice */}
+            {users.length > 0 && users[0].id.startsWith('mock-') && (
+              <Alert className="mb-6 border-blue-200 bg-blue-50">
+                <Settings className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800">
+                  <strong>Demo Mode:</strong> Showing sample data for demonstration. 
+                  Connect to Firebase to see real user data.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Stats Cards */}
+            {stats && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card>
               <CardContent className="p-6">
@@ -515,6 +661,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
             </Card>
           </TabsContent>
         </Tabs>
+          </>
+        )}
       </div>
 
       {/* User Edit Modal */}
