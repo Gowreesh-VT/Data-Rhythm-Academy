@@ -3,7 +3,7 @@ import { Course } from '../types';
 import { Card, CardContent, CardFooter, CardHeader } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Star, Clock, Users, Play, Heart, Download, Monitor, Award } from 'lucide-react';
+import { Star, Clock, Users, Play, Heart, Download, Monitor, Award, Calendar, Video } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ImageWithFallback } from './ImageWithFallback';
 
@@ -155,7 +155,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           )}
         </div>
         
-        <div className="flex items-center justify-between text-sm text-gray-600">
+        <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
           <div className="flex items-center space-x-4">
             <div className="flex items-center">
               <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
@@ -166,12 +166,39 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               <Users className="w-4 h-4 mr-1" />
               <span>{course.totalStudents.toLocaleString()}</span>
             </div>
-            <div className="flex items-center">
-              <Clock className="w-4 h-4 mr-1" />
-              <span>{formatDuration(course.duration)}</span>
-            </div>
           </div>
         </div>
+
+        {/* Class Schedule Information */}
+        {course.classSchedule && (
+          <div className="bg-blue-50 rounded-lg p-3 mb-3">
+            <div className="flex items-center mb-2">
+              <Calendar className="w-4 h-4 text-blue-600 mr-2" />
+              <span className="font-medium text-blue-900 text-sm">Live Classes</span>
+            </div>
+            <div className="space-y-1 text-xs text-blue-800">
+              <div className="flex items-center">
+                <Clock className="w-3 h-3 mr-1" />
+                {course.classSchedule.classFrequency}
+              </div>
+              <div className="flex items-center">
+                <Video className="w-3 h-3 mr-1" />
+                {course.classSchedule.duration} min sessions ({course.classSchedule.totalClasses} total)
+              </div>
+              {course.scheduledClasses && course.scheduledClasses.length > 0 && (
+                <div className="text-green-700 font-medium">
+                  Next: {new Date(course.scheduledClasses[0].startTime).toLocaleDateString('en-IN', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="mt-2">
           <Badge variant="outline" className="text-xs">

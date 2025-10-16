@@ -10,6 +10,7 @@ import { AboutPage } from "./components/AboutPage";
 import { CoursesPage } from "./components/CoursesPage";
 import { StudentDashboard } from "./components/StudentDashboard";
 import { MyCoursesPage } from "./components/MyCoursesPage";
+import { CalendarPage } from "./components/CalendarPage";
 import { InstructorDashboard } from "./components/InstructorDashboard";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { CourseDetailPage } from "./components/CourseDetailPage";
@@ -205,6 +206,14 @@ function AppContent() {
         path="/my-courses"
         element={
           <MyCoursesPage
+            onNavigate={handleNavigate}
+          />
+        }
+      />
+      <Route
+        path="/calendar"
+        element={
+          <CalendarPage
             onNavigate={handleNavigate}
           />
         }

@@ -19,6 +19,7 @@ export type NavigatePath =
   | "/course/:id"
   | "/lesson/:id"
   | "/my-courses"
+  | "/calendar"
   | "/instructor-dashboard"
   | "/admin-dashboard"
   | "/wishlist"

@@ -236,6 +236,7 @@ export function LandingPage({ onNavigate, user, onLogout }: LandingPageProps) {
               {user ? (
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600">Welcome, {user.name}</span>
+                  <Button variant="outline" onClick={() => onNavigate('/calendar')}>Calendar</Button>
                   <Button variant="outline" onClick={handleDashboardRedirect}>Dashboard</Button>
                   <Button variant="ghost" onClick={onLogout}>Logout</Button>
                 </div>

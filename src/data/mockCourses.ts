@@ -1,35 +1,71 @@
 // Mock course data with reliable placeholder images
 import { Course, CourseCategory, CourseLevel } from '../types';
 
-// Helper function to add online course features
-const addOnlineFeatures = (course: Omit<Course, 'isOnline' | 'hasLiveSupport' | 'discussionEnabled' | 'downloadableResources' | 'mobileAccess' | 'lifetimeAccess' | 'completionCertificate' | 'closedCaptions' | 'scheduledClasses' | 'classSchedule' | 'liveClassUrl' | 'recordedClassesAvailable' | 'classNotifications' | 'maxStudentsPerClass'>): Course => ({
-  ...course,
-  isOnline: true as const,
-  hasLiveSupport: true,
-  discussionEnabled: true,
-  downloadableResources: true,
-  mobileAccess: true,
-  lifetimeAccess: true,
-  completionCertificate: true,
-  closedCaptions: true,
-  scheduledClasses: [],
-  classSchedule: {
-    courseId: course.id,
-    pattern: 'weekly',
-    daysOfWeek: [1, 3, 5], // Monday, Wednesday, Friday
-    startTime: '18:00', // 6 PM
-    duration: 90, // 90 minutes
-    timezone: 'UTC',
-    startDate: new Date(),
-    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-    totalClasses: 12,
-    classFrequency: 'Every Monday, Wednesday & Friday'
-  },
-  liveClassUrl: 'https://meet.google.com/generated-link',
-  recordedClassesAvailable: true,
-  classNotifications: true,
-  maxStudentsPerClass: 50
-});
+// Helper function to add online course features with scheduled classes
+const addOnlineFeatures = (course: Omit<Course, 'isOnline' | 'hasLiveSupport' | 'discussionEnabled' | 'downloadableResources' | 'mobileAccess' | 'lifetimeAccess' | 'completionCertificate' | 'closedCaptions' | 'scheduledClasses' | 'classSchedule' | 'liveClassUrl' | 'recordedClassesAvailable' | 'classNotifications' | 'maxStudentsPerClass'>): Course => {
+  const startDate = new Date();
+  const scheduledClasses = [];
+  
+  // Generate next 8 upcoming classes (Mon, Wed, Fri schedule)
+  const classdays = [1, 3, 5]; // Monday, Wednesday, Friday
+  let currentDate = new Date(startDate);
+  let classCount = 0;
+  
+  while (classCount < 8) {
+    const dayOfWeek = currentDate.getDay();
+    if (classdays.includes(dayOfWeek)) {
+      scheduledClasses.push({
+        id: `class-${course.id}-${classCount + 1}`,
+        courseId: course.id,
+        title: `${course.title} - Session ${classCount + 1}`,
+        description: `Interactive live session covering core concepts of ${course.title}`,
+        startTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 18, 0), // 6 PM
+        endTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 19, 30), // 7:30 PM
+        instructorId: course.instructorId,
+        maxStudents: 50,
+        enrolledStudents: [], // Will be populated when students enroll
+        status: classCount === 0 ? 'scheduled' as const : 'scheduled' as const,
+        classType: 'lecture' as const,
+        meetingUrl: `https://meet.google.com/${course.id}-session-${classCount + 1}`,
+        recordingUrl: undefined, // Will be available after class
+        isRecorded: true,
+        timezone: 'Asia/Kolkata',
+        reminderSent: false
+      });
+      classCount++;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return {
+    ...course,
+    isOnline: true as const,
+    hasLiveSupport: true,
+    discussionEnabled: true,
+    downloadableResources: true,
+    mobileAccess: true,
+    lifetimeAccess: true,
+    completionCertificate: true,
+    closedCaptions: true,
+    scheduledClasses,
+    classSchedule: {
+      courseId: course.id,
+      pattern: 'weekly',
+      daysOfWeek: [1, 3, 5], // Monday, Wednesday, Friday
+      startTime: '18:00', // 6 PM
+      duration: 90, // 90 minutes
+      timezone: 'Asia/Kolkata',
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000), // 45 days from now
+      totalClasses: 8,
+      classFrequency: 'Every Monday, Wednesday & Friday at 6:00 PM IST'
+    },
+    liveClassUrl: `https://meet.google.com/${course.id}-live`,
+    recordedClassesAvailable: true,
+    classNotifications: true,
+    maxStudentsPerClass: 50
+  };
+};
 
 export const getMockCourses = (): Course[] => [
   addOnlineFeatures({
