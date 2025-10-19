@@ -315,9 +315,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
     
     try {
       await updateUserRole(userId, newRole, user.id);
+      
+      // Update the selected user in the modal immediately
+      if (selectedUser && selectedUser.id === userId) {
+        setSelectedUser({ ...selectedUser, role: newRole });
+      }
+      
+      success('Role Updated', `User role changed to ${newRole} successfully`);
       loadAdminData(); // Refresh data
     } catch (error) {
       console.error('Error updating user role:', error);
+      showError('Role Update Failed', 'Failed to update user role. Please try again.');
     }
   };
 
@@ -326,9 +334,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
     
     try {
       await updateUserStatus(userId, newStatus, user.id);
+      
+      // Update the selected user in the modal immediately
+      if (selectedUser && selectedUser.id === userId) {
+        setSelectedUser({ ...selectedUser, profileStatus: newStatus });
+      }
+      
+      success('Status Updated', `User status changed to ${newStatus} successfully`);
       loadAdminData(); // Refresh data
     } catch (error) {
       console.error('Error updating user status:', error);
+      showError('Status Update Failed', 'Failed to update user status. Please try again.');
     }
   };
 
