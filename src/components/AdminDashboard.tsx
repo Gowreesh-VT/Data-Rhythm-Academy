@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -1105,6 +1105,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Course Enrollment Type</DialogTitle>
+            <DialogDescription>
+              Change how students can enroll in this course - either directly or by inquiry
+            </DialogDescription>
           </DialogHeader>
           
           {selectedCourseForEdit && (
@@ -1187,6 +1190,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user role and account status
+            </DialogDescription>
           </DialogHeader>
           {selectedUser && (
             <div className="space-y-4">
@@ -1255,6 +1261,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Assign Unique ID</DialogTitle>
+            <DialogDescription>
+              Generate or manually assign a unique ID for this user
+            </DialogDescription>
           </DialogHeader>
           {selectedUserForId && (
             <div className="space-y-4">
@@ -1303,6 +1312,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Course</DialogTitle>
+            <DialogDescription>
+              Fill in the course details to create a new course for your academy
+            </DialogDescription>
           </DialogHeader>
           <CourseCreationForm
             availableInstructors={availableInstructors}
