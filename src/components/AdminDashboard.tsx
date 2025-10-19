@@ -592,10 +592,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
                   </div>
                   <Button 
                     onClick={() => setShowCreateCourseModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg shadow-sm transition-colors"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-all hover:shadow-lg"
                   >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Create New Course
+                    <Plus className="w-5 h-5 mr-2 font-bold" />
+                    <span className="text-blue-500">Create New Course</span>
                   </Button>
                 </div>
 
