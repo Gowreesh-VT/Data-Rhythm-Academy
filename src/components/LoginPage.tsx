@@ -5,11 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
-import { ImageWithFallback } from './ImageWithFallback';
+import { ImageWithFallback } from './common/ImageWithFallback';
 import { Logo } from './ui/logo';
 import { NavigatePath } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { AuthErrorDisplay, useAuthErrorHandler } from './AuthErrorDisplay';
+import { AuthErrorDisplay, useAuthErrorHandler } from './auth/AuthErrorDisplay';
 import { useToast } from '../contexts/ToastContext';
 import { loginSchema, validateAndSanitize } from '../utils/validation';
 import { 
@@ -116,8 +116,9 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
             variant="ghost"
             onClick={() => onNavigate('/')}
             className="mb-6 text-gray-600 hover:text-blue-600 p-2"
+            aria-label="Go back to home page"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="w-4 h-4 mr-2" aria-hidden="true" />
             Back to Home
           </Button>
 
@@ -125,8 +126,9 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
           <button
             onClick={() => onNavigate('/')}
             className="flex items-center space-x-3 mb-8 hover:opacity-80 transition-opacity cursor-pointer"
+            aria-label="Go to Data Rhythm Academy homepage"
           >
-            <Logo size="lg" className="text-blue-600" />
+            <Logo size="lg" className="text-blue-600" aria-hidden="true" />
             <span className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
               Data Rhythm Academy
             </span>
@@ -148,8 +150,9 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
                   onClick={() => handleSocialLogin('google')}
                   disabled={isLoading}
                   className="border-blue-200 hover:bg-blue-50"
+                  aria-label="Sign in with Google"
                 >
-                  <Chrome className="w-4 h-4 mr-2" />
+                  <Chrome className="w-4 h-4 mr-2" aria-hidden="true" />
                   Google
                 </Button>
                 <Button
@@ -157,13 +160,14 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
                   onClick={() => handleSocialLogin('github')}
                   disabled={isLoading}
                   className="border-blue-200 hover:bg-blue-50"
+                  aria-label="Sign in with GitHub"
                 >
-                  <Github className="w-4 h-4 mr-2" />
+                  <Github className="w-4 h-4 mr-2" aria-hidden="true" />
                   GitHub
                 </Button>
               </div>
 
-              <div className="relative">
+              <div className="relative" role="separator" aria-label="or">
                 <div className="absolute inset-0 flex items-center">
                   <Separator className="w-full" />
                 </div>

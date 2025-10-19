@@ -88,8 +88,16 @@ export const getUserProfile = async (userId: string) => {
 };
 
 // Course Management
-export const createCourse = async (courseData: Omit<Course, 'id' | 'createdAt' | 'updatedAt'>) => {
+export const createCourse = async (courseData: Omit<Course, 'id' | 'createdAt' | 'updatedAt'>, adminId?: string) => {
   try {
+    // Check if the user is an admin (if adminId is provided)
+    if (adminId) {
+      const adminDoc = await getDoc(doc(db, 'users', adminId));
+      if (!adminDoc.exists() || adminDoc.data()?.role !== 'admin') {
+        throw new Error('Permission denied: Admin role required to create courses');
+      }
+    }
+
     const docRef = await addDoc(collection(db, 'courses'), {
       ...courseData,
       createdAt: serverTimestamp(),
@@ -108,8 +116,16 @@ export const createCourse = async (courseData: Omit<Course, 'id' | 'createdAt' |
   }
 };
 
-export const updateCourse = async (courseId: string, updates: Partial<Course>) => {
+export const updateCourse = async (courseId: string, updates: Partial<Course>, adminId?: string) => {
   try {
+    // Check if the user is an admin (if adminId is provided)
+    if (adminId) {
+      const adminDoc = await getDoc(doc(db, 'users', adminId));
+      if (!adminDoc.exists() || adminDoc.data()?.role !== 'admin') {
+        throw new Error('Permission denied: Admin role required to update courses');
+      }
+    }
+
     const courseDocRef = doc(db, 'courses', courseId);
     await updateDoc(courseDocRef, {
       ...updates,
@@ -122,21 +138,31 @@ export const updateCourse = async (courseId: string, updates: Partial<Course>) =
   }
 };
 
+export const deleteCourse = async (courseId: string, adminId: string) => {
+  try {
+    // Check if the user is an admin
+    const adminDoc = await getDoc(doc(db, 'users', adminId));
+    if (!adminDoc.exists() || adminDoc.data()?.role !== 'admin') {
+      throw new Error('Permission denied: Admin role required to delete courses');
+    }
+
+    // Delete the course document
+    await deleteDoc(doc(db, 'courses', courseId));
+    
+    logger.info('Course deleted successfully', { courseId, adminId });
+    return { data: true };
+  } catch (error) {
+    logger.error('Error deleting course:', error);
+    return { error: error as Error };
+  }
+};
+
 export const getCourse = async (courseId: string) => {
   try {
-    // First try to get from Firestore
+    // Get from Firestore
     const courseDoc = await getDoc(doc(db, 'courses', courseId));
     if (courseDoc.exists()) {
       return { data: { id: courseDoc.id, ...courseDoc.data() } as Course };
-    }
-    
-    // If not found in Firestore, check mock data
-    const { getMockCourses } = await import('../data/mockCourses');
-    const mockCourses = getMockCourses();
-    const mockCourse = mockCourses.find(course => course.id === courseId);
-    
-    if (mockCourse) {
-      return { data: mockCourse };
     }
     
     return { data: null };
@@ -148,30 +174,14 @@ export const getCourse = async (courseId: string) => {
 
 export const getPublishedCourses = async () => {
   try {
-    // Try to get courses from Firestore first
-    const q = query(
-      collection(db, 'courses'), 
-      where('isPublished', '==', true),
-      orderBy('createdAt', 'desc')
-    );
+    // Get published courses from Firestore
+    const q = query(collection(db, 'courses'), where('isPublished', '==', true));
     const querySnapshot = await getDocs(q);
-    const firestoreCourses = querySnapshot.docs.map(doc => ({
+    const allCourses: Course[] = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as Course[];
-    
-    // Also get mock courses
-    const { getMockCourses } = await import('../data/mockCourses');
-    const mockCourses = getMockCourses().filter(course => course.isPublished);
-    
-    // Combine both (Firestore courses take precedence if same ID)
-    const allCourses = [...firestoreCourses];
-    mockCourses.forEach(mockCourse => {
-      if (!allCourses.find(c => c.id === mockCourse.id)) {
-        allCourses.push(mockCourse);
-      }
-    });
-    
+
     return { data: allCourses };
   } catch (error) {
     logger.error('Error getting published courses:', error);
@@ -206,9 +216,15 @@ export const enrollInCourse = async (userId: string, courseId: string, paymentDa
   paymentMethod: string;
 }) => {
   try {
+    // Get user data to include name in enrollment
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userData = userDoc.data();
+    
     // Create enrollment record
     const enrollmentData: Omit<Enrollment, 'id'> = {
       userId,
+      userName: userData?.displayName || userData?.email || 'Unknown User',
+      userEmail: userData?.email || '',
       courseId,
       enrolledAt: new Date(),
       status: 'active',
@@ -267,6 +283,7 @@ export const getUserEnrollments = async (userId: string) => {
       id: doc.id,
       ...doc.data()
     })) as Enrollment[];
+    
     return { data: enrollments };
   } catch (error) {
     logger.error('Error getting user enrollments:', error);
@@ -467,19 +484,38 @@ export const getAllUsers = async (role?: 'student' | 'instructor' | 'admin') => 
 
 export const updateUserRole = async (userId: string, newRole: 'student' | 'instructor' | 'admin', adminId: string) => {
   try {
-    await safeUpdateUserDoc(userId, {
+    // Get current user data to check old role
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    const currentUserData = userDoc.data();
+    const oldRole = currentUserData?.role || 'unknown';
+    
+    // Check if we need to generate a new unique ID
+    // Generate new unique ID when changing between instructor and student roles
+    let updateData: any = {
       role: newRole,
       updatedAt: serverTimestamp(),
       lastModifiedBy: adminId
-    });
+    };
+    
+    if ((oldRole === 'instructor' && newRole === 'student') || 
+        (oldRole === 'student' && newRole === 'instructor')) {
+      // Generate new unique ID for the new role
+      const newUniqueId = await generateUniqueId(newRole);
+      updateData.uniqueId = newUniqueId;
+      
+      logger.info(`Role change requires new unique ID: ${oldRole} -> ${newRole}, new ID: ${newUniqueId}`);
+    }
+    
+    await safeUpdateUserDoc(userId, updateData);
     
     // Log the role change
     await addDoc(collection(db, 'admin_logs'), {
       action: 'role_change',
       targetUserId: userId,
       adminId: adminId,
-      oldRole: 'unknown', // Would need to fetch current role first
+      oldRole: oldRole,
       newRole: newRole,
+      newUniqueId: updateData.uniqueId || null,
       timestamp: serverTimestamp()
     });
     
@@ -599,6 +635,82 @@ export const removeStudentFromInstructor = async (instructorId: string, studentI
   }
 };
 
+// Online class scheduling
+export const createOnlineClass = async (classData: Omit<any, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const docRef = await addDoc(collection(db, 'online_classes'), {
+      ...classData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return { data: { id: docRef.id, ...classData } };
+  } catch (error) {
+    logger.error('Error creating online class:', error);
+    return { error: error as Error };
+  }
+};
+
+export const updateOnlineClass = async (classId: string, updates: any) => {
+  try {
+    const classRef = doc(db, 'online_classes', classId);
+    await updateDoc(classRef, {
+      ...updates,
+      updatedAt: serverTimestamp()
+    });
+    return { success: true };
+  } catch (error) {
+    logger.error('Error updating online class:', error);
+    return { error: error as Error };
+  }
+};
+
+export const deleteOnlineClass = async (classId: string) => {
+  try {
+    await deleteDoc(doc(db, 'online_classes', classId));
+    return { success: true };
+  } catch (error) {
+    logger.error('Error deleting online class:', error);
+    return { error: error as Error };
+  }
+};
+
+export const getUpcomingClassesForCourse = async (courseId: string) => {
+  try {
+    const now = new Date();
+    const q = query(
+      collection(db, 'online_classes'),
+      where('courseId', '==', courseId),
+      where('scheduledAt', '>=', now),
+      orderBy('scheduledAt', 'asc')
+    );
+    const snapshot = await getDocs(q);
+    const classes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    return { data: classes };
+  } catch (error) {
+    logger.error('Error fetching upcoming classes for course:', error);
+    return { error: error as Error };
+  }
+};
+
+export const listenToUpcomingClassesForStudent = (studentId: string, callback: (classes: any[]) => void) => {
+  try {
+    const now = new Date();
+    const q = query(
+      collection(db, 'online_classes'),
+      where('attendees', 'array-contains', studentId),
+      where('scheduledAt', '>=', now),
+      orderBy('scheduledAt', 'asc')
+    );
+    return onSnapshot(q, (snapshot) => {
+      const classes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      callback(classes as any[]);
+    });
+  } catch (error) {
+    logger.error('Error listening to upcoming classes for student:', error);
+    return () => {};
+  }
+};
+
 export const getInstructorStudents = async (instructorId: string) => {
   try {
     const relationshipQuery = query(
@@ -687,6 +799,197 @@ export const createAdminUser = async (adminData: {
     return { data: { id: docRef.id, ...adminUser } };
   } catch (error) {
     logger.error('Error creating admin user:', error);
+    return { error: error as Error };
+  }
+};
+
+// Utility function to update existing enrollments with user names
+// This can be used to backfill userName and userEmail for existing enrollment records
+export const updateEnrollmentsWithUserNames = async () => {
+  try {
+    logger.log('Starting to update enrollments with user names...');
+    
+    // Get all enrollments that don't have userName
+    const enrollmentsQuery = query(
+      collection(db, 'enrollments'),
+      where('userName', '==', null)
+    );
+    
+    const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
+    let updatedCount = 0;
+    
+    for (const enrollmentDoc of enrollmentsSnapshot.docs) {
+      const enrollment = enrollmentDoc.data();
+      
+      // Get user data
+      const userDoc = await getDoc(doc(db, 'users', enrollment.userId));
+      const userData = userDoc.data();
+      
+      if (userData) {
+        // Update enrollment with user name and email
+        await updateDoc(enrollmentDoc.ref, {
+          userName: userData.displayName || userData.email || 'Unknown User',
+          userEmail: userData.email || '',
+          updatedAt: new Date()
+        });
+        updatedCount++;
+      }
+    }
+    
+    logger.log(`Successfully updated ${updatedCount} enrollment records with user names`);
+    return { data: { updatedCount }, error: null };
+  } catch (error) {
+    logger.error('Error updating enrollments with user names:', error);
+    return { data: null, error: error as Error };
+  }
+};
+
+// Unique ID Management Functions
+export const generateUniqueId = async (role: 'instructor' | 'student'): Promise<string> => {
+  try {
+    const currentYear = new Date().getFullYear().toString().slice(-2); // Get last 2 digits of year (25 for 2025)
+    const prefix = role === 'instructor' ? `DRA-INS-${currentYear}` : `DRA-STU-${currentYear}`;
+    const digitCount = 3; // xxx format for both types
+    
+    // Query all users with the same role to find the highest number
+    const q = query(
+      collection(db, 'users'),
+      where('role', '==', role),
+      where('uniqueId', '>=', prefix),
+      where('uniqueId', '<', prefix + '\uf8ff')
+    );
+    
+    const snapshot = await getDocs(q);
+    let maxNumber = 0;
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.uniqueId && data.uniqueId.startsWith(prefix)) {
+        // Extract number part after the prefix (e.g., "001" from "DRA-INS-25001")
+        const numberPart = data.uniqueId.substring(prefix.length);
+        const number = parseInt(numberPart, 10);
+        if (!isNaN(number) && number > maxNumber) {
+          maxNumber = number;
+        }
+      }
+    });
+    
+    const nextNumber = maxNumber + 1;
+    const paddedNumber = nextNumber.toString().padStart(digitCount, '0');
+    return `${prefix}${paddedNumber}`;
+  } catch (error) {
+    logger.error('Error generating unique ID:', error);
+    throw error;
+  }
+};
+
+// Helper function to validate unique ID format
+export const validateUniqueIdFormat = (uniqueId: string, role: 'instructor' | 'student'): { isValid: boolean; error?: string } => {
+  if (!uniqueId || typeof uniqueId !== 'string') {
+    return { isValid: false, error: 'Unique ID is required' };
+  }
+
+  const currentYear = new Date().getFullYear().toString().slice(-2);
+  const expectedPrefix = role === 'instructor' ? `DRA-INS-${currentYear}` : `DRA-STU-${currentYear}`;
+  
+  // Check if it follows the correct format: DRA-INS-25xxx or DRA-STU-25xxx
+  const formatRegex = role === 'instructor' 
+    ? new RegExp(`^DRA-INS-${currentYear}\\d{3}$`)
+    : new RegExp(`^DRA-STU-${currentYear}\\d{3}$`);
+
+  if (!formatRegex.test(uniqueId)) {
+    return { 
+      isValid: false, 
+      error: `Invalid format. Expected format: ${expectedPrefix}xxx (e.g., ${expectedPrefix}001)` 
+    };
+  }
+
+  return { isValid: true };
+};
+
+export const assignUniqueId = async (userId: string, newUniqueId: string, adminId: string) => {
+  try {
+    // Verify admin permissions
+    const adminDoc = await getDoc(doc(db, 'users', adminId));
+    if (!adminDoc.exists() || adminDoc.data()?.role !== 'admin') {
+      throw new Error('Permission denied: Admin role required to assign unique IDs');
+    }
+
+    // Get user data to validate against their role
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) {
+      throw new Error('User not found');
+    }
+    
+    const userData = userDoc.data();
+    const userRole = userData?.role;
+    
+    if (userRole === 'admin') {
+      throw new Error('Admin users do not require unique IDs');
+    }
+
+    if (!userRole || (userRole !== 'instructor' && userRole !== 'student')) {
+      throw new Error('User role must be instructor or student to assign unique ID');
+    }
+
+    // Validate the unique ID format
+    const validation = validateUniqueIdFormat(newUniqueId, userRole);
+    if (!validation.isValid) {
+      throw new Error(validation.error);
+    }
+
+    // Check if unique ID is already taken
+    const existingQuery = query(
+      collection(db, 'users'),
+      where('uniqueId', '==', newUniqueId)
+    );
+    const existingSnapshot = await getDocs(existingQuery);
+    
+    if (!existingSnapshot.empty) {
+      const existingUser = existingSnapshot.docs[0];
+      if (existingUser.id !== userId) {
+        throw new Error('Unique ID is already assigned to another user');
+      }
+    }
+
+    // Update user with new unique ID
+    await updateDoc(doc(db, 'users', userId), {
+      uniqueId: newUniqueId,
+      updatedAt: serverTimestamp()
+    });
+
+    // Log the change
+    await addDoc(collection(db, 'admin_logs'), {
+      action: 'assign_unique_id',
+      userId,
+      uniqueId: newUniqueId,
+      adminId,
+      timestamp: serverTimestamp()
+    });
+
+    return { success: true };
+  } catch (error) {
+    logger.error('Error assigning unique ID:', error);
+    return { error: error as Error };
+  }
+};
+
+export const getAvailableInstructors = async () => {
+  try {
+    const q = query(
+      collection(db, 'users'),
+      where('role', '==', 'instructor'),
+      where('profileStatus', '==', 'active')
+    );
+    const snapshot = await getDocs(q);
+    const instructors = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as User[];
+    
+    return { data: instructors };
+  } catch (error) {
+    logger.error('Error getting available instructors:', error);
     return { error: error as Error };
   }
 };

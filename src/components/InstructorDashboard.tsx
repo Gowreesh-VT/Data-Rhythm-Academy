@@ -1,97 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Course, User } from '../types';
+import { Course } from '../types';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { useToast } from '../contexts/ToastContext';
-import { logger } from '../utils/logger';
+import { Badge } from './ui/badge';
+import { useAuth } from '../contexts/AuthContext';
+import { getInstructorCourses } from '../lib/database';
 import { 
   BookOpen, 
   Users, 
-  DollarSign, 
-  TrendingUp, 
-  Plus,
-  Edit,
-  Eye,
-  BarChart3,
-  Calendar,
   Star,
-  PlayCircle,
-  Settings
+  BarChart3,
+  MessageSquare,
+  Video,
+  GraduationCap,
+  TrendingUp,
+  Clock
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { getInstructorCourses, createCourse } from '../lib/database';
+import { InstructorAnalyticsDashboard } from './dashboard/InstructorAnalyticsDashboard';
+import { InstructorCommunicationHub } from './dashboard/InstructorCommunicationHub';
+import { InstructorLiveClassConsole } from './dashboard/InstructorLiveClassConsole';
 
 interface InstructorDashboardProps {
   onNavigate: (path: string) => void;
   onLogout: () => void;
 }
 
-export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ onNavigate, onLogout }) => {
+export function InstructorDashboard({ onNavigate, onLogout }: InstructorDashboardProps) {
   const { user } = useAuth();
-  const { success, error: showError } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateCourse, setShowCreateCourse] = useState(false);
-  const [stats, setStats] = useState({
-    totalCourses: 0,
-    totalStudents: 0,
-    totalRevenue: 0,
-    averageRating: 0
-  });
-  const [newCourse, setNewCourse] = useState({
-    title: '',
-    description: '',
-    shortDescription: '',
-    category: '' as any,
-    level: '' as any,
-    language: 'English',
-    price: 0,
-    duration: 0,
-    thumbnailUrl: '',
-    learningObjectives: [''],
-    prerequisites: [''],
-    tags: ''
-  });
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    if (user) {
-      loadInstructorData();
-    }
+    loadInstructorData();
   }, [user]);
 
   const loadInstructorData = async () => {
-    if (!user?.id) return;
+    if (!user) return;
     
     setLoading(true);
     try {
-      // Fetch instructor's courses from database
       const coursesResult = await getInstructorCourses(user.id);
-      if (coursesResult.error) {
-        console.error('Error loading instructor courses:', coursesResult.error);
-        setCourses([]);
-      } else {
-        const instructorCourses = coursesResult.data || [];
-        setCourses(instructorCourses);
-        
-        // Calculate stats based on real data
-        const totalStudents = instructorCourses.reduce((acc: number, course: Course) => acc + course.totalStudents, 0);
-        const totalRevenue = instructorCourses.reduce((acc: number, course: Course) => acc + (course.price * course.totalStudents), 0);
-        const averageRating = instructorCourses.length > 0 
-          ? instructorCourses.reduce((acc: number, course: Course) => acc + course.rating, 0) / instructorCourses.length 
-          : 0;
-        
-        setStats({
-          totalCourses: instructorCourses.length,
-          totalStudents,
-          totalRevenue,
-          averageRating: Math.round(averageRating * 10) / 10
-        });
+      if (coursesResult.data) {
+        setCourses(coursesResult.data);
       }
     } catch (error) {
       console.error('Error loading instructor data:', error);
@@ -100,353 +52,330 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ onNavi
     }
   };
 
-  const handleCreateCourse = async () => {
-    if (!user?.id) return;
-    
-    try {
-      const courseData = {
-        ...newCourse,
-        instructorId: user.id,
-        instructorName: user.displayName || user.email || 'Unknown Instructor',
-        rating: 0,
-        totalRatings: 0,
-        totalStudents: 0,
-        lessons: [],
-        learningObjectives: newCourse.learningObjectives.filter(obj => obj.trim() !== ''),
-        prerequisites: newCourse.prerequisites.filter(req => req.trim() !== ''),
-        tags: newCourse.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
-        isPublished: false,
-        currency: '$',
-        thumbnailUrl: newCourse.thumbnailUrl || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400',
-        // Online course specific features
-        isOnline: true as const,
-        hasLiveSupport: true,
-        discussionEnabled: true,
-        downloadableResources: true,
-        mobileAccess: true,
-        lifetimeAccess: true,
-        completionCertificate: true,
-        closedCaptions: false,
-        // Scheduled class features - required properties
-        scheduledClasses: [],
-        classSchedule: {
-          courseId: '',
-          pattern: 'weekly' as const,
-          daysOfWeek: [1, 3], // Monday and Wednesday
-          startTime: '10:00',
-          duration: 90, // 90 minutes
-          timezone: 'UTC',
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
-          totalClasses: 12,
-          classFrequency: 'Every Monday & Wednesday'
-        },
-        recordedClassesAvailable: true,
-        classNotifications: true
-      };
+  const calculateStats = () => {
+    const totalStudents = courses.reduce((sum, course) => sum + (course.totalStudents || 0), 0);
+    const avgRating = courses.length > 0 
+      ? courses.reduce((sum, course) => sum + (course.rating || 0), 0) / courses.length 
+      : 0;
+    const totalLessons = courses.reduce((sum, course) => sum + (course.lessons?.length || 0), 0);
 
-      const result = await createCourse(courseData);
-      if (result.error) {
-        console.error('Error creating course:', result.error);
-        showError('Course Creation Failed', 'Error creating course. Please try again.');
-      } else {
-        console.log('Course created successfully:', result.data);
-        setShowCreateCourse(false);
-        // Reset form
-        setNewCourse({
-          title: '',
-          description: '',
-          shortDescription: '',
-          category: '' as any,
-          level: '' as any,
-          language: 'English',
-          price: 0,
-          duration: 0,
-          thumbnailUrl: '',
-          learningObjectives: [''],
-          prerequisites: [''],
-          tags: ''
-        });
-        // Reload courses
-        loadInstructorData();
-      }
-    } catch (error) {
-      console.error('Error creating course:', error);
-      showError('Course Creation Failed', 'Error creating course. Please try again.');
-    }
+    return {
+      totalCourses: courses.length,
+      totalStudents,
+      totalLessons,
+      avgRating: Math.round(avgRating * 10) / 10
+    };
   };
 
-  const handleEditCourse = (courseId: string) => {
-    onNavigate(`/course/${courseId}/edit`);
-  };
-
-  const handleViewCourse = (courseId: string) => {
-    onNavigate(`/course/${courseId}`);
-  };
+  const stats = calculateStats();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your dashboard...</p>
+          <p className="text-gray-600">Loading instructor dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900">Instructor Dashboard</h1>
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Instructor Dashboard</h1>
+              <p className="text-gray-600 mt-1">Welcome back, {user?.displayName || 'Instructor'}</p>
             </div>
-            <nav className="flex items-center space-x-6">
-              <button onClick={() => onNavigate('/courses')} className="text-blue-600 font-medium">
-                Browse Courses
-              </button>
-              <button onClick={() => onNavigate('/profile')} className="text-gray-700 hover:text-blue-600">
-                Profile
-              </button>
-            </nav>
-            <div className="flex items-center space-x-4">
-              {user ? (
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-700">Hello, {user.displayName || user.email}</span>
-                  <Button variant="outline" size="sm" onClick={onLogout}>
-                    Logout
-                  </Button>
-                </div>
-              ) : (
-                <Button size="sm" onClick={() => onNavigate('/login')}>
-                  Login
-                </Button>
-              )}
+            <div className="flex space-x-3">
+              <Button variant="outline" onClick={() => onNavigate('/')}>
+                Back to Site
+              </Button>
+              <Button variant="destructive" onClick={onLogout}>
+                Logout
+              </Button>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <BookOpen className="h-8 w-8 text-blue-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Courses</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalCourses}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+          <div className="flex justify-center mb-8">
+            <TabsList className="inline-flex h-12 items-center justify-center rounded-lg bg-gray-100 p-1 text-gray-500 shadow-md border border-gray-200 overflow-x-auto">
+              <TabsTrigger 
+                value="overview" 
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-white hover:text-gray-900 min-w-[80px]"
+              >
+                Overview
+              </TabsTrigger>
+              <TabsTrigger 
+                value="analytics" 
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-white hover:text-gray-900 min-w-[80px]"
+              >
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger 
+                value="live-classes" 
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-white hover:text-gray-900 min-w-[90px]"
+              >
+                Live Classes
+              </TabsTrigger>
+              <TabsTrigger 
+                value="communication" 
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-white hover:text-gray-900 min-w-[100px]"
+              >
+                Communication
+              </TabsTrigger>
+              <TabsTrigger 
+                value="courses" 
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-white hover:text-gray-900 min-w-[80px]"
+              >
+                Courses
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Users className="h-8 w-8 text-green-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Students</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalStudents.toLocaleString()}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-8">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Total Courses</CardTitle>
+                  <BookOpen className="h-5 w-5 text-blue-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900">{stats.totalCourses}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Active courses
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <DollarSign className="h-8 w-8 text-yellow-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-2xl font-bold text-gray-900">${stats.totalRevenue.toLocaleString()}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="border-l-4 border-l-green-500 shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Total Students</CardTitle>
+                  <Users className="h-5 w-5 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900">{stats.totalStudents}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enrolled across all courses
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Star className="h-8 w-8 text-orange-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Avg Rating</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.averageRating || 'N/A'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Total Lessons</CardTitle>
+                  <GraduationCap className="h-5 w-5 text-purple-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900">{stats.totalLessons}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Content modules
+                  </p>
+                </CardContent>
+              </Card>
 
-        {/* Course Management */}
-        <Card className="mb-8">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Your Courses</CardTitle>
-            <Dialog open={showCreateCourse} onOpenChange={setShowCreateCourse}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Course
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Course</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 mt-4">
-                  <div>
-                    <label className="text-sm font-medium">Course Title</label>
-                    <Input 
-                      value={newCourse.title}
-                      onChange={(e) => setNewCourse(prev => ({...prev, title: e.target.value}))}
-                      placeholder="Enter course title"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Short Description</label>
-                    <Input 
-                      value={newCourse.shortDescription}
-                      onChange={(e) => setNewCourse(prev => ({...prev, shortDescription: e.target.value}))}
-                      placeholder="Brief course description"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Full Description</label>
-                    <Textarea 
-                      value={newCourse.description}
-                      onChange={(e) => setNewCourse(prev => ({...prev, description: e.target.value}))}
-                      placeholder="Detailed course description"
-                      rows={4}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Category</label>
-                      <Select value={newCourse.category} onValueChange={(value) => setNewCourse(prev => ({...prev, category: value}))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Data Science">Data Science</SelectItem>
-                          <SelectItem value="Web Development">Web Development</SelectItem>
-                          <SelectItem value="Mobile Development">Mobile Development</SelectItem>
-                          <SelectItem value="Machine Learning">Machine Learning</SelectItem>
-                          <SelectItem value="Design">Design</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Level</label>
-                      <Select value={newCourse.level} onValueChange={(value) => setNewCourse(prev => ({...prev, level: value}))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Beginner">Beginner</SelectItem>
-                          <SelectItem value="Intermediate">Intermediate</SelectItem>
-                          <SelectItem value="Advanced">Advanced</SelectItem>
-                          <SelectItem value="Expert">Expert</SelectItem>
-                        </SelectContent>
-                      </Select>
+              <Card className="border-l-4 border-l-yellow-500 shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Average Rating</CardTitle>
+                  <Star className="h-5 w-5 text-yellow-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900">{stats.avgRating}/5</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Across all courses
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Activity */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg font-semibold text-gray-900">
+                  <Clock className="w-5 h-5 mr-2 text-blue-600" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">New student enrolled in Python for Beginners</p>
+                      <p className="text-xs text-gray-500 mt-1">2 hours ago</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Price ($)</label>
-                      <Input 
-                        type="number"
-                        value={newCourse.price}
-                        onChange={(e) => setNewCourse(prev => ({...prev, price: parseFloat(e.target.value) || 0}))}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Duration (hours)</label>
-                      <Input 
-                        type="number"
-                        value={newCourse.duration}
-                        onChange={(e) => setNewCourse(prev => ({...prev, duration: parseFloat(e.target.value) || 0}))}
-                        placeholder="0"
-                      />
+                  <div className="flex items-start space-x-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">Course completion rate improved by 12%</p>
+                      <p className="text-xs text-gray-500 mt-1">1 day ago</p>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium">Tags (comma-separated)</label>
-                    <Input 
-                      value={newCourse.tags}
-                      onChange={(e) => setNewCourse(prev => ({...prev, tags: e.target.value}))}
-                      placeholder="python, data science, beginner"
-                    />
+                  <div className="flex items-start space-x-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">5-star review received on Data Science course</p>
+                      <p className="text-xs text-gray-500 mt-1">3 days ago</p>
+                    </div>
                   </div>
-                  <div className="flex justify-end space-x-2 pt-4">
-                    <Button variant="outline" onClick={() => setShowCreateCourse(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleCreateCourse}>
-                      Create Course
-                    </Button>
+                  <div className="flex items-start space-x-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">New lesson uploaded to Web Development course</p>
+                      <p className="text-xs text-gray-500 mt-1">5 days ago</p>
+                    </div>
                   </div>
                 </div>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent>
-            {courses.length === 0 ? (
-              <div className="text-center py-8">
-                <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No courses yet</h3>
-                <p className="mt-1 text-sm text-gray-500">Get started by creating your first course.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {courses.map((course) => (
-                  <Card key={course.id} className="hover:shadow-lg transition-shadow">
-                    <CardContent className="p-4">
-                      <img 
-                        src={course.thumbnailUrl} 
-                        alt={course.title}
-                        className="w-full h-32 object-cover rounded-lg mb-3"
-                      />
-                      <h3 className="font-semibold text-lg mb-2">{course.title}</h3>
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{course.shortDescription}</p>
-                      <div className="flex items-center justify-between mb-3">
-                        <Badge variant={course.isPublished ? "default" : "secondary"}>
-                          {course.isPublished ? "Published" : "Draft"}
-                        </Badge>
-                        <span className="text-sm font-medium">${course.price}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
-                        <div className="flex items-center">
-                          <Users className="w-4 h-4 mr-1" />
-                          {course.totalStudents}
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg font-semibold text-gray-900">
+                  <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button 
+                    onClick={() => setActiveTab('analytics')}
+                    variant="outline"
+                    className="h-20 flex-col space-y-2 border-green-200 hover:bg-green-50"
+                  >
+                    <BarChart3 className="w-6 h-6 text-green-600" />
+                    <span>View Analytics</span>
+                  </Button>
+                  <Button 
+                    onClick={() => setActiveTab('live-classes')}
+                    variant="outline"
+                    className="h-20 flex-col space-y-2 border-purple-200 hover:bg-purple-50"
+                  >
+                    <Video className="w-6 h-6 text-purple-600" />
+                    <span>Live Classes</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics">
+            <InstructorAnalyticsDashboard 
+              instructorId={user?.id || ''}
+              onNavigate={onNavigate}
+            />
+          </TabsContent>
+
+          {/* Live Classes Tab */}
+          <TabsContent value="live-classes">
+            <InstructorLiveClassConsole 
+              instructorId={user?.id || ''}
+              onNavigate={onNavigate}
+            />
+          </TabsContent>
+
+          {/* Communication Tab */}
+          <TabsContent value="communication">
+            <InstructorCommunicationHub 
+              instructorId={user?.id || ''}
+              onNavigate={onNavigate}
+            />
+          </TabsContent>
+
+          {/* Courses Tab */}
+          <TabsContent value="courses" className="space-y-8">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">My Courses</h2>
+              <Button 
+                onClick={() => onNavigate('/create-course')}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <BookOpen className="w-4 h-4 mr-2" />
+                Create New Course
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {courses.map((course) => (
+                <Card key={course.id} className="hover:shadow-lg transition-all duration-200 border-0 shadow-md">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">{course.title}</CardTitle>
+                    <div className="flex items-center space-x-2 pt-2">
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">{course.category}</Badge>
+                      <Badge variant="outline" className="border-gray-300">{course.level}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-gray-600 line-clamp-2">{course.shortDescription}</p>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <Users className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm font-medium">Students</span>
                         </div>
-                        <div className="flex items-center">
-                          <Star className="w-4 h-4 mr-1" />
-                          {course.rating || 'N/A'}
+                        <span className="text-sm font-bold">{course.totalStudents || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <Star className="w-4 h-4 text-yellow-500" />
+                          <span className="text-sm font-medium">Rating</span>
                         </div>
+                        <span className="text-sm font-bold">
+                          {course.rating ? `${course.rating}/5` : 'No ratings'}
+                        </span>
                       </div>
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="outline" onClick={() => handleViewCourse(course.id)}>
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                        <Button size="sm" onClick={() => handleEditCourse(course.id)}>
-                          <Edit className="w-4 h-4 mr-1" />
-                          Edit
-                        </Button>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <GraduationCap className="w-4 h-4 text-purple-600" />
+                          <span className="text-sm font-medium">Lessons</span>
+                        </div>
+                        <span className="text-sm font-bold">{course.lessons?.length || 0}</span>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    </div>
+                    <div className="flex space-x-2 pt-2">
+                      <Button 
+                        size="sm" 
+                        onClick={() => onNavigate(`/course/${course.id}`)}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700"
+                      >
+                        <BookOpen className="w-4 h-4 mr-1" />
+                        View Course
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => onNavigate(`/edit-course/${course.id}`)}
+                        className="flex-1 border-gray-300 hover:bg-gray-50"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {courses.length === 0 && (
+              <div className="text-center py-16 bg-white rounded-lg shadow-sm border border-gray-200">
+                <BookOpen className="w-20 h-20 text-gray-400 mx-auto mb-6" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No courses assigned yet</h3>
+                <p className="text-gray-600 mb-8 max-w-md mx-auto">Courses will appear here once an administrator assigns them to you or creates new courses for the platform.</p>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
-};
+}

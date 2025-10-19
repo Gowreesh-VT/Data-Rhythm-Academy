@@ -34,15 +34,15 @@ import { getUserEnrolledCourses, getUserEnrollments } from '../lib/database';
 import { trackCourseProgress, trackFeatureUsage } from '../lib/analytics';
 
 // Import new components
-import { DashboardSkeleton, CourseCardSkeleton } from './LoadingStates';
-import { ErrorState, RetryWrapper } from './ErrorStates';
+import { DashboardSkeleton, CourseCardSkeleton } from './common/LoadingStates';
+import { ErrorState, RetryWrapper } from './common/ErrorStates';
 import { 
   LearningStreak, 
   Achievements, 
   StudyPlanner, 
   CourseRecommendations 
-} from './EnhancedDashboardComponents';
-import { ProgressAnalytics } from './ProgressAnalytics';
+} from './dashboard/EnhancedDashboardComponents';
+import { ProgressAnalytics } from './dashboard/ProgressAnalytics';
 
 interface EnhancedStudentDashboardProps {
   onNavigate: (path: string) => void;
@@ -535,7 +535,7 @@ export const EnhancedStudentDashboard: React.FC<EnhancedStudentDashboardProps> =
 
             {filteredCourses.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCourses.map((course) => {
+                {filteredCourses.map(course => {
                   const enrollment = enrollments.find(e => e.courseId === course.id);
                   return (
                     <CourseCard
@@ -543,6 +543,7 @@ export const EnhancedStudentDashboard: React.FC<EnhancedStudentDashboardProps> =
                       course={course}
                       onEnroll={() => handleContinueLearning(course.id)}
                       onPreview={() => handleContinueLearning(course.id)}
+                      onNavigate={onNavigate}
                       progress={typeof enrollment?.progress === 'number' ? enrollment.progress : 0}
                       isEnrolled={true}
                       showProgress={true}

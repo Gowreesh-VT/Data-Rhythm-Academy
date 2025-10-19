@@ -27,6 +27,7 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { logger } from '../utils/logger';
+import { withErrorHandling, categorizeError, getUserFriendlyMessage } from '../utils/errorHandling';
 
 // Get environment variables with proper fallbacks
 const getEnvVar = (key: string, fallback: string): string => {
@@ -101,7 +102,7 @@ githubProvider.addScope('user:email');
 export const authHelpers = {
   // Sign up with email and password
   signUp: async (email: string, password: string, additionalData?: any) => {
-    try {
+    return withErrorHandling(async () => {
       logger.log('Attempting to create user with email:', email);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       logger.log('User created successfully:', userCredential.user.uid);
@@ -109,21 +110,24 @@ export const authHelpers = {
         data: { user: userCredential.user }, 
         error: null 
       };
-    } catch (error: any) {
-      logger.error('Sign up error:', error);
+    }, { operation: 'signUp', email }, 2)
+    .catch(error => {
+      const appError = categorizeError(error, { operation: 'signUp', email });
+      logger.error('Sign up error:', appError);
       return { 
         data: null, 
         error: { 
-          message: error.message,
-          code: error.code
+          message: appError.userMessage,
+          code: appError.code,
+          type: appError.type
         } 
       };
-    }
+    });
   },
 
   // Sign in with email and password
   signIn: async (email: string, password: string) => {
-    try {
+    return withErrorHandling(async () => {
       logger.log('Attempting to sign in with email:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       logger.log('User signed in successfully:', userCredential.user.uid);
@@ -131,16 +135,19 @@ export const authHelpers = {
         data: { user: userCredential.user }, 
         error: null 
       };
-    } catch (error: any) {
-      logger.error('Sign in error:', error);
+    }, { operation: 'signIn', email }, 2)
+    .catch(error => {
+      const appError = categorizeError(error, { operation: 'signIn', email });
+      logger.error('Sign in error:', appError);
       return { 
         data: null, 
         error: { 
-          message: error.message,
-          code: error.code
+          message: appError.userMessage,
+          code: appError.code,
+          type: appError.type
         } 
       };
-    }
+    });
   },
 
   // Sign in with OAuth (Google, GitHub, etc.)
@@ -226,18 +233,24 @@ export const authHelpers = {
 
   // Reset password
   resetPassword: async (email: string) => {
-    try {
+    return withErrorHandling(async () => {
       await sendPasswordResetEmail(auth, email);
       return { 
-        data: { message: 'Password reset email sent' }, 
+        data: { message: 'Password reset email sent successfully' }, 
         error: null 
       };
-    } catch (error: any) {
+    }, { operation: 'resetPassword', email }, 2)
+    .catch(error => {
+      const appError = categorizeError(error, { operation: 'resetPassword', email });
+      logger.error('Password reset error:', appError);
       return { 
         data: null, 
-        error: { message: error.message } 
+        error: { 
+          message: appError.userMessage,
+          code: appError.code
+        } 
       };
-    }
+    });
   }
 };
 
@@ -357,9 +370,33 @@ export const dbHelpers = {
   // Enhanced Enrollment Management for Online Classes
   // Enroll user in a course with scheduled classes
   enrollInCourse: async (userId: string, courseId: string, paymentData?: any) => {
-    try {
+    return withErrorHandling(async () => {
+      // Get user data to include name in enrollment
+      const userRef = doc(db, 'users', userId);
+      const userDoc = await getDoc(userRef);
+      const userData = userDoc.data();
+      
+      if (!userData) {
+        throw new Error('User profile not found. Please complete your profile setup.');
+      }
+      
+      // Check if already enrolled
+      const existingEnrollmentQuery = query(
+        collection(db, 'enrollments'),
+        where('userId', '==', userId),
+        where('courseId', '==', courseId),
+        where('status', '==', 'active')
+      );
+      const existingSnapshot = await getDocs(existingEnrollmentQuery);
+      
+      if (!existingSnapshot.empty) {
+        throw new Error('You are already enrolled in this course.');
+      }
+      
       const enrollmentData = {
         userId,
+        userName: userData?.displayName || userData?.email || 'Unknown User',
+        userEmail: userData?.email || '',
         courseId,
         enrolledAt: new Date(),
         status: 'active',
@@ -382,45 +419,49 @@ export const dbHelpers = {
       const docRef = await addDoc(collection(db, 'enrollments'), enrollmentData);
 
       // Update user's enrolled courses
-      const userRef = doc(db, 'users', userId);
-      const userDoc = await getDoc(userRef);
-      const currentEnrolledCourses = userDoc.data()?.enrolledCourses || [];
+      const currentEnrolledCourses = userData?.enrolledCourses || [];
       
       await updateDoc(userRef, {
         enrolledCourses: [...currentEnrolledCourses, courseId],
         updatedAt: new Date()
       });
 
-      // Update course student count and add to scheduled classes
-      const courseRef = doc(db, 'courses', courseId);
-      const courseDoc = await getDoc(courseRef);
-      if (courseDoc.exists()) {
-        const currentStudents = courseDoc.data()?.totalStudents || 0;
-        await updateDoc(courseRef, {
-          totalStudents: currentStudents + 1,
-          updatedAt: new Date()
-        });
+      // Optional: Update course student count and add to scheduled classes
+      try {
+        const courseRef = doc(db, 'courses', courseId);
+        const courseDoc = await getDoc(courseRef);
+        if (courseDoc.exists()) {
+          const currentStudents = courseDoc.data()?.totalStudents || 0;
+          await updateDoc(courseRef, {
+            totalStudents: currentStudents + 1,
+            updatedAt: new Date()
+          });
 
-        // Add user to all future scheduled classes
-        await dbHelpers.addUserToScheduledClasses(userId, courseId);
+          // Add user to all future scheduled classes
+          await dbHelpers.addUserToScheduledClasses(userId, courseId);
+        }
+      } catch (courseUpdateError) {
+        // Log but don't fail the enrollment if course update fails
+        logger.warn('Course update failed but enrollment succeeded:', courseUpdateError);
       }
 
       logger.log('✅ User enrolled successfully:', { userId, courseId, enrollmentId: docRef.id });
       return { id: docRef.id, error: null };
-    } catch (error: any) {
-      logger.error('❌ Enrollment failed:', error);
-      return { id: null, error: error.message };
-    }
+    }, { operation: 'enrollInCourse', userId, courseId }, 3)
+    .catch(error => {
+      const appError = categorizeError(error, { operation: 'enrollInCourse', userId, courseId });
+      logger.error('❌ Enrollment failed:', appError);
+      return { 
+        id: null, 
+        error: appError.userMessage
+      };
+    });
   },
 
   // Get user's enrolled courses with full details (My Courses)
   getMyCourses: async (userId: string) => {
     try {
       logger.log('🔍 Fetching My Courses for user:', userId);
-      
-      // Import mock courses
-      const { getMockCourses } = await import('../data/mockCourses');
-      const allCourses = getMockCourses();
       
       // Get user enrollments
       const enrollmentsQuery = query(
@@ -436,22 +477,14 @@ export const dbHelpers = {
       for (const enrollmentDoc of enrollmentSnapshot.docs) {
         const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as any;
         
-        // Get course details from mock data
-        const course = allCourses.find(c => c.id === enrollment.courseId);
-        if (course) {
-          // Get upcoming scheduled classes (mock for now)
-          const upcomingClasses = [
-            {
-              id: `class-${course.id}-1`,
-              title: `${course.title} - Live Session`,
-              date: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-              time: '18:00',
-              duration: 90,
-              status: 'scheduled',
-              meetingUrl: 'https://meet.google.com/abc-def-ghi'
-            }
-          ];
+        // Get course details from Firestore
+        const courseDoc = await getDoc(doc(db, 'courses', enrollment.courseId));
+        if (courseDoc.exists()) {
+          const course = { id: courseDoc.id, ...courseDoc.data() } as any;
           
+          // Get upcoming scheduled classes from Firestore
+          const { data: upcomingClassesData } = await dbHelpers.getUpcomingClasses(course.id, enrollment.userId);
+          const upcomingClasses = upcomingClassesData || [];
           const nextClass = upcomingClasses[0];
           
           // Calculate progress summary
@@ -578,6 +611,33 @@ export const dbHelpers = {
     }
   },
 
+  // Create a single scheduled class
+  createScheduledClass: async (classData: any) => {
+    try {
+      const docRef = await addDoc(collection(db, 'scheduledClasses'), {
+        ...classData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      return { id: docRef.id, data: { id: docRef.id, ...classData }, error: null };
+    } catch (error: any) {
+      return { id: null, data: null, error: error.message };
+    }
+  },
+
+  // Update an existing scheduled class
+  updateScheduledClass: async (classId: string, updates: any) => {
+    try {
+      await updateDoc(doc(db, 'scheduledClasses', classId), {
+        ...updates,
+        updatedAt: new Date()
+      });
+      return { success: true, error: null };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
   // Add user to all scheduled classes of a course
   addUserToScheduledClasses: async (userId: string, courseId: string) => {
     try {
@@ -595,6 +655,30 @@ export const dbHelpers = {
       return { success: true, error: null };
     } catch (error: any) {
       return { success: false, error: error.message };
+    }
+  },
+
+  // Listen to scheduled classes for real-time updates
+  listenToScheduledClasses: (courseId: string, callback: (classes: any[]) => void) => {
+    try {
+      const now = new Date();
+      const q = query(
+        collection(db, 'scheduledClasses'),
+        where('courseId', '==', courseId),
+        where('startTime', '>', now),
+        orderBy('startTime', 'asc')
+      );
+      
+      return onSnapshot(q, (querySnapshot) => {
+        const classes = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        callback(classes);
+      });
+    } catch (error: any) {
+      console.error('Error setting up scheduled classes listener:', error);
+      return () => {}; // Return empty unsubscribe function
     }
   },
 

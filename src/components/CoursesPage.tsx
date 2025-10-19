@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Course, CourseFilter, CourseCategory, CourseLevel } from '../types';
 import { CourseCard } from './CourseCard';
-import { SearchWithAutocomplete } from './SearchWithAutocomplete';
+import { SearchWithAutocomplete } from './common/SearchWithAutocomplete';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { Search, Filter, Grid, List, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getMockCourses } from '../data/mockCourses';
+import { getPublishedCourses } from '../lib/database';
 
 interface CoursesPageProps {
   onNavigate: (path: string) => void;
@@ -34,17 +34,33 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate, onLogout }
   const levels: CourseLevel[] = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
   // Load courses data
-  useEffect(() => {
+  const loadCourses = async () => {
     try {
-      const mockCourses = getMockCourses();
-      setCourses(mockCourses);
-      setFilteredCourses(mockCourses);
+      const result = await getPublishedCourses();
+      if (result.data) {
+        // For students, show only published courses from other instructors
+        const availableCourses = result.data.filter(course => 
+          course.isPublished && course.instructorId !== user?.id
+        );
+        setCourses(availableCourses);
+        setFilteredCourses(availableCourses);
+      }
       setLoading(false);
     } catch (error) {
       console.error('Error loading courses:', error);
       setLoading(false);
     }
-  }, []);
+  };
+
+  useEffect(() => {
+    // Redirect instructors to their dashboard
+    if (user?.role === 'instructor') {
+      onNavigate('/instructor-dashboard');
+      return;
+    }
+    
+    loadCourses();
+  }, [user, onNavigate]);
 
   // Filter and search logic
   useEffect(() => {
@@ -117,6 +133,10 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate, onLogout }
 
   const handlePreview = (courseId: string) => {
     onNavigate(`/course/${courseId}`);
+  };
+
+  const handleEnquire = (courseId: string) => {
+    onNavigate(`/contact?course=${courseId}`);
   };
 
   const clearFilters = () => {
@@ -269,6 +289,8 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate, onLogout }
               course={course}
               onEnroll={handleEnroll}
               onPreview={handlePreview}
+              onEnquire={handleEnquire}
+              onNavigate={onNavigate}
               isEnrolled={user?.enrolledCourses?.includes(course.id)}
             />
           ))}

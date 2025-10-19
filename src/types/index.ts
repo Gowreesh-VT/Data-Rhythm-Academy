@@ -33,6 +33,7 @@ export interface User {
   displayName: string;
   photoURL?: string;
   role: 'student' | 'instructor' | 'admin';
+  uniqueId?: string; // DRA-INS-25xxx for instructors, DRA-STU-25xxx for students
   enrolledCourses: string[];
   createdCourses?: string[];
   createdAt: Date;
@@ -84,6 +85,55 @@ export interface InstructorStudentRelationship {
   status: 'active' | 'inactive' | 'completed';
 }
 
+// Online Class Scheduling types
+export interface OnlineClass {
+  id: string;
+  title: string;
+  description?: string;
+  courseId: string;
+  courseName: string;
+  instructorId: string;
+  instructorName: string;
+  scheduledAt: Date;
+  duration: number; // in minutes
+  meetingLink?: string;
+  meetingId?: string;
+  meetingPassword?: string;
+  platform: 'zoom' | 'meet' | 'teams' | 'custom';
+  status: 'scheduled' | 'ongoing' | 'completed' | 'cancelled';
+  attendees: string[]; // student IDs
+  maxAttendees?: number;
+  recurring?: {
+    pattern: 'daily' | 'weekly' | 'monthly';
+    interval: number; // every N days/weeks/months
+    endDate?: Date;
+    occurrences?: number;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+  notes?: string;
+}
+
+export interface OnlineClassAttendance {
+  id: string;
+  classId: string;
+  studentId: string;
+  studentName: string;
+  status: 'registered' | 'attended' | 'missed' | 'excused';
+  joinedAt?: Date;
+  leftAt?: Date;
+  attendanceDuration?: number; // in minutes
+  createdAt: Date;
+}
+
+export interface ClassScheduleData {
+  totalClasses: number;
+  upcomingClasses: number;
+  completedClasses: number;
+  todayClasses: OnlineClass[];
+  weekClasses: OnlineClass[];
+}
+
 export interface Course {
   id: string;
   title: string;
@@ -99,6 +149,7 @@ export interface Course {
   price: number;
   originalPrice?: number;
   currency: string;
+  enrollmentType: 'direct' | 'enquiry'; // 'direct' for immediate enrollment, 'enquiry' for contact-based
   duration: number; // in hours
   thumbnailUrl: string;
   previewVideoUrl?: string;
@@ -183,6 +234,8 @@ export interface QuizQuestion {
 export interface Enrollment {
   id: string;
   userId: string;
+  userName?: string;
+  userEmail?: string;
   courseId: string;
   enrolledAt: Date;
   completedAt?: Date;
@@ -230,6 +283,7 @@ export type CourseCategory =
   | 'Machine Learning'
   | 'Web Development'
   | 'Mobile Development'
+  | 'Python'
   | 'Database'
   | 'Cloud Computing'
   | 'DevOps'

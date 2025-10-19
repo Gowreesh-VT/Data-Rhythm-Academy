@@ -1,32 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Course, Lesson } from '../types';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Course, NavigatePath } from '../types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { useToast } from '../contexts/ToastContext';
-import { logger } from '../utils/logger';
+import { Alert, AlertDescription } from './ui/alert';
+import { Separator } from './ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { 
-  Play, 
+  Star, 
   Clock, 
   Users, 
-  Star, 
-  Award, 
-  FileText, 
-  CheckCircle,
-  Globe,
+  PlayCircle, 
+  ArrowLeft, 
+  Heart,
   Calendar,
-  Target,
+  Video,
+  FileText,
+  Download,
+  Share2,
   BookOpen,
-  PlayCircle
+  Award,
+  Globe,
+  Monitor,
+  Target,
+  CheckCircle,
+  AlertCircle,
+  CreditCard,
+  Play
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { CourseReviews } from './CourseReviews';
-import { trackCourseView, trackCourseEnrollment } from '../lib/analytics';
+import { useToast } from '../contexts/ToastContext';
+import { withErrorHandling, categorizeError } from '../utils/errorHandling';
 import { dbHelpers } from '../lib/firebase';
+import { trackCourseEnrollment } from '../lib/analytics';
+import { ImageWithFallback } from './common/ImageWithFallback';
+import { usePayment } from '../hooks/usePayment';
+import { formatAmount } from '../lib/razorpay';
+import { logger } from '../utils/logger';
+import { getDoc, doc, addDoc, collection } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { CourseReviews } from './course/CourseReviews';
 
 interface CourseDetailPageProps {
   onNavigate: (path: string) => void;
@@ -36,12 +53,28 @@ interface CourseDetailPageProps {
 export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ onNavigate, onLogout }) => {
   const { courseId } = useParams<{ courseId: string }>();
   const { user } = useAuth();
-  const { success, error, warning } = useToast();
+  const { success, error: showError, errorWithRetry, warning } = useToast();
+
+  // Payment hook for Razorpay integration
+  const { processPayment, isProcessing: isPaymentProcessing } = usePayment({
+    onSuccess: (paymentData, enrollmentId) => {
+      setIsEnrolled(true);
+      success('Payment Successful!', 'You have been enrolled in the course. Redirecting...');
+      setTimeout(() => {
+        onNavigate('/my-courses');
+      }, 2000);
+    },
+    onError: (error) => {
+      console.error('Payment error:', error);
+    }
+  });
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [errorState, setErrorState] = useState<string | null>(null);
+  const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
 
   useEffect(() => {
     if (courseId) {
@@ -51,156 +84,26 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ onNavigate, 
 
   const loadCourseData = async (id: string) => {
     try {
-      // Mock course data - replace with actual Firebase call
-      const mockCourse: Course = {
-        id: id,
-        title: 'Complete Python Data Science Bootcamp',
-        description: `Master Python for Data Science with this comprehensive bootcamp! Learn Python programming fundamentals, data manipulation with Pandas, data visualization with Matplotlib and Seaborn, and machine learning with Scikit-Learn.
-
-This course is designed for beginners who want to break into the field of data science. You'll start with Python basics and progressively move to advanced topics including statistical analysis, machine learning algorithms, and real-world projects.
-
-By the end of this course, you'll have the skills to analyze complex datasets, create beautiful visualizations, and build predictive models that can solve real business problems.`,
-        shortDescription: 'Master Python for Data Science from beginner to advanced level',
-        instructorId: 'instructor1',
-        instructorName: 'Dr. Sarah Johnson',
-        instructorImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-        category: 'Data Science',
-        level: 'Beginner',
-        language: 'English',
-        price: 89.99,
-        originalPrice: 199.99,
-        currency: '$',
-        duration: 24.5,
-        thumbnailUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800',
-        previewVideoUrl: 'https://www.youtube.com/embed/rfscVS0vtbw',
-        rating: 4.7,
-        totalRatings: 12543,
-        totalStudents: 45632,
-        lessons: [
-          {
-            id: '1',
-            courseId: id,
-            title: 'Introduction to Python and Data Science',
-            description: 'Get started with Python programming and understand the data science workflow',
-            videoUrl: 'https://www.youtube.com/embed/rfscVS0vtbw',
-            duration: 45,
-            order: 1,
-            isPreview: true,
-            videoQuality: '1080p',
-            playbackSpeed: true,
-            downloadable: false,
-            resources: [
-              {
-                id: '1',
-                title: 'Python Installation Guide',
-                type: 'pdf',
-                url: '#',
-                size: '2.1 MB'
-              },
-              {
-                id: '2',
-                title: 'Course Resources',
-                type: 'link',
-                url: '#'
-              }
-            ]
-          },
-          {
-            id: '2',
-            courseId: id,
-            title: 'Python Fundamentals',
-            description: 'Learn variables, data types, loops, and functions',
-            videoUrl: '#',
-            duration: 60,
-            order: 2,
-            isPreview: false,
-            videoQuality: '1080p',
-            playbackSpeed: true,
-            downloadable: true
-          },
-          {
-            id: '3',
-            courseId: id,
-            title: 'Introduction to NumPy',
-            description: 'Master numerical computing with NumPy arrays',
-            videoUrl: '#',
-            duration: 75,
-            order: 3,
-            isPreview: false,
-            videoQuality: '720p',
-            playbackSpeed: true,
-            downloadable: true
-          },
-          {
-            id: '4',
-            courseId: id,
-            title: 'Data Manipulation with Pandas',
-            description: 'Learn to clean, transform, and analyze data',
-            videoUrl: '#',
-            duration: 90,
-            order: 4,
-            isPreview: false,
-            videoQuality: '1080p',
-            playbackSpeed: true,
-            downloadable: false
-          }
-        ],
-        learningObjectives: [
-          'Master Python programming fundamentals',
-          'Learn data analysis with Pandas and NumPy',
-          'Create stunning visualizations with Matplotlib and Seaborn',
-          'Build machine learning models with Scikit-Learn',
-          'Work with real-world datasets and projects',
-          'Understand statistical concepts for data science'
-        ],
-        prerequisites: [
-          'Basic computer skills',
-          'No prior programming experience required',
-          'High school level mathematics'
-        ],
-        tags: ['Python', 'Data Science', 'Machine Learning', 'Pandas', 'NumPy'],
-        isPublished: true,
-        createdAt: new Date('2024-01-15'),
-        updatedAt: new Date('2024-10-01'),
-        // Online course specific features
-        isOnline: true,
-        hasLiveSupport: true,
-        discussionEnabled: true,
-        downloadableResources: true,
-        mobileAccess: true,
-        lifetimeAccess: true,
-        completionCertificate: true,
-        closedCaptions: true,
-        multipleLanguageSubtitles: ['en', 'es', 'fr'],
-        // Scheduled class features
-        scheduledClasses: [],
-        classSchedule: {
-          courseId: id,
-          pattern: 'weekly',
-          daysOfWeek: [1, 3, 5], // Monday, Wednesday, Friday
-          startTime: '18:00', // 6 PM
-          duration: 90, // 90 minutes
-          timezone: 'UTC',
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-          totalClasses: 12,
-          classFrequency: 'Every Monday, Wednesday & Friday'
-        },
-        liveClassUrl: 'https://meet.google.com/generated-link',
-        recordedClassesAvailable: true,
-        classNotifications: true,
-        maxStudentsPerClass: 50
-      };
-
-      setCourse(mockCourse);
-      setIsEnrolled(user?.enrolledCourses?.includes(id) || false);
-      setProgress(isEnrolled ? Math.random() * 100 : 0);
-      setLoading(false);
+      // Get course from Firebase
+      const courseDoc = await getDoc(doc(db, 'courses', id));
       
-      // Track course view
-      trackCourseView(mockCourse.id, mockCourse.title);
+      if (courseDoc.exists()) {
+        const courseData = courseDoc.data() as Course;
+        const loadedCourse = { ...courseData, id: courseDoc.id };
+        setCourse(loadedCourse);
+        setIsEnrolled(user?.enrolledCourses?.includes(id) || false);
+        setProgress(isEnrolled ? Math.random() * 100 : 0);
+        
+        // Track course view
+        const { trackCourseView } = await import('../lib/analytics');
+        trackCourseView(loadedCourse.id, loadedCourse.title);
+      } else {
+        throw new Error('Course not found');
+      }
+      setLoading(false);
     } catch (error) {
       console.error('Error loading course:', error);
+      setErrorState('Failed to load course details. Please try again later.');
       setLoading(false);
     }
   };
@@ -225,7 +128,11 @@ By the end of this course, you'll have the skills to analyze complex datasets, c
       
       if (error) {
         logger.error('❌ Enrollment failed:', error);
-        error('Enrollment Failed', 'Failed to enroll in course. Please try again.');
+        errorWithRetry(
+          'Enrollment Failed',
+          error,
+          () => handleEnroll()
+        );
         return;
       }
 
@@ -245,7 +152,11 @@ By the end of this course, you'll have the skills to analyze complex datasets, c
       
     } catch (err) {
       console.error('❌ Error enrolling:', err);
-      error('Unexpected Error', 'An unexpected error occurred. Please try again.');
+      errorWithRetry(
+        'Unexpected Error',
+        'An unexpected error occurred during enrollment.',
+        () => handleEnroll()
+      );
     } finally {
       setEnrolling(false);
     }
@@ -263,6 +174,32 @@ By the end of this course, you'll have the skills to analyze complex datasets, c
 
   const handlePreviewLesson = (lessonId: string) => {
     onNavigate(`/lesson/${lessonId}`);
+  };
+
+  const handlePaymentEnrollment = async () => {
+    if (!user) {
+      onNavigate('/login');
+      return;
+    }
+
+    if (!course) {
+      showError('Course Error', 'Course information not available');
+      return;
+    }
+
+    try {
+      await processPayment({
+        courseId: course.id,
+        courseTitle: course.title,
+        amount: course.price,
+        userId: user.id,
+        userEmail: user.email || '',
+        userName: user.displayName || user.email || 'Student',
+        autoEnroll: true
+      });
+    } catch (error) {
+      console.error('Failed to initiate payment:', error);
+    }
   };
 
   const formatDuration = (minutes: number) => {
@@ -432,14 +369,60 @@ By the end of this course, you'll have the skills to analyze complex datasets, c
                           {progress > 0 ? 'Continue Learning' : 'Start Learning'}
                         </Button>
                       </div>
+                    ) : course.price > 0 ? (
+                      <div className="space-y-3">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-600">
+                            {formatAmount(course.price)}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            + {formatAmount(Math.round(course.price * 0.18))} GST
+                          </div>
+                          <div className="text-lg font-semibold text-blue-600">
+                            Total: {formatAmount(Math.round(course.price * 1.18))}
+                          </div>
+                        </div>
+                        <Button 
+                          className="w-full" 
+                          onClick={handlePaymentEnrollment}
+                          disabled={enrolling || isPaymentProcessing}
+                        >
+                          {(enrolling || isPaymentProcessing) ? (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <span>Processing...</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <CreditCard className="w-4 h-4" />
+                              <span>Enroll Now - {formatAmount(course.price)}</span>
+                            </div>
+                          )}
+                        </Button>
+                        <div className="text-xs text-center text-gray-500">
+                          Secure payment via Razorpay
+                        </div>
+                      </div>
                     ) : (
-                      <Button 
-                        className="w-full" 
-                        onClick={handleEnroll}
-                        disabled={enrolling}
-                      >
-                        {enrolling ? 'Enrolling...' : 'Enroll Now'}
-                      </Button>
+                      <>
+                        {course.enrollmentType === 'direct' ? (
+                          <Button 
+                            className="w-full" 
+                            onClick={() => setShowEnrollmentModal(true)}
+                            disabled={enrolling}
+                          >
+                            {enrolling ? 'Enrolling...' : 'Enroll Now'}
+                          </Button>
+                        ) : (
+                          <Button 
+                            className="w-full" 
+                            variant="outline"
+                            onClick={() => onNavigate('/contact')}
+                          >
+                            Contact Us for Enrollment
+                          </Button>
+                        )}
+                      </>
                     )}
 
                     <div className="mt-4 space-y-2 text-sm">
@@ -908,9 +891,25 @@ By the end of this course, you'll have the skills to analyze complex datasets, c
                   averageRating={course.rating}
                   totalReviews={course.totalRatings}
                   canReview={isEnrolled}
-                  onReviewSubmit={(review) => {
+                  onReviewSubmit={async (review) => {
                     console.log('New review submitted:', review);
-                    // TODO: Save to Firebase
+                    try {
+                      // Save review to Firebase
+                      const { addDoc, collection } = await import('firebase/firestore');
+                      await addDoc(collection(db, 'reviews'), {
+                        ...review,
+                        courseId: course.id,
+                        userId: user?.id,
+                        userDisplayName: user?.displayName || user?.email,
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                      });
+                      
+                      success('Review Submitted', 'Thank you for your feedback!');
+                    } catch (err) {
+                      console.error('Error saving review:', err);
+                      showError('Failed to Submit', 'Could not save your review. Please try again.');
+                    }
                   }}
                 />
               </TabsContent>
@@ -959,6 +958,188 @@ By the end of this course, you'll have the skills to analyze complex datasets, c
           </div>
         </div>
       </div>
+
+      {/* Enrollment Overview Modal */}
+      <Dialog open={showEnrollmentModal} onOpenChange={setShowEnrollmentModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Course Overview - {course?.title}</DialogTitle>
+          </DialogHeader>
+          
+          {course && (
+            <div className="space-y-6">
+              {/* Course Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <img 
+                    src={course.thumbnailUrl} 
+                    alt={course.title}
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                  <div className="mt-4">
+                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                      <div className="flex items-center">
+                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                        <span>{course.rating} ({course.totalRatings} reviews)</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Users className="w-4 h-4 mr-1" />
+                        <span>{course.totalStudents.toLocaleString()} students</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <Badge className="mb-2">{course.level}</Badge>
+                  <h3 className="font-semibold text-lg mb-2">{course.shortDescription}</h3>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-3">{course.description}</p>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center">
+                      <Clock className="w-4 h-4 mr-2 text-gray-500" />
+                      <span>{course.duration} hours total</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Globe className="w-4 h-4 mr-2 text-gray-500" />
+                      <span>{course.language}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Award className="w-4 h-4 mr-2 text-gray-500" />
+                      <span>Certificate of completion</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Tabs defaultValue="objectives" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="objectives">Learning Objectives</TabsTrigger>
+                  <TabsTrigger value="prerequisites">Prerequisites</TabsTrigger>
+                  <TabsTrigger value="syllabus">Course Syllabus</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="objectives" className="space-y-3">
+                  <h4 className="font-semibold">What you'll learn:</h4>
+                  <ul className="space-y-2">
+                    {course.learningObjectives.map((objective, index) => (
+                      <li key={index} className="flex items-start">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">{objective}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </TabsContent>
+                
+                <TabsContent value="prerequisites" className="space-y-3">
+                  <h4 className="font-semibold">Requirements:</h4>
+                  <ul className="space-y-2">
+                    {course.prerequisites.map((prerequisite, index) => (
+                      <li key={index} className="flex items-start">
+                        <AlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">{prerequisite}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </TabsContent>
+                
+                <TabsContent value="syllabus" className="space-y-3">
+                  <h4 className="font-semibold">Course Content:</h4>
+                  <div className="space-y-3">
+                    {course.lessons.slice(0, 5).map((lesson, index) => (
+                      <div key={lesson.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                          <span className="text-blue-600 font-semibold text-sm">{index + 1}</span>
+                        </div>
+                        <div className="flex-1">
+                          <h5 className="font-medium text-sm">{lesson.title}</h5>
+                          <div className="flex items-center space-x-3 text-xs text-gray-500 mt-1">
+                            <span className="flex items-center">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {lesson.duration} min
+                            </span>
+                            {lesson.resources && lesson.resources.length > 0 && (
+                              <span className="flex items-center">
+                                <FileText className="w-3 h-3 mr-1" />
+                                {lesson.resources.length} resources
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {course.lessons.length > 5 && (
+                      <p className="text-sm text-gray-500 text-center">
+                        +{course.lessons.length - 5} more lessons...
+                      </p>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              {/* Pricing */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-lg">Course Price</h4>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-3xl font-bold text-green-600">
+                        {course.currency}{course.price.toLocaleString()}
+                      </span>
+                      {course.originalPrice && course.originalPrice > course.price && (
+                        <span className="text-lg text-gray-500 line-through">
+                          {course.currency}{course.originalPrice.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Badge className="bg-green-100 text-green-800">
+                    ✨ Best Value
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex space-x-3">
+            <Button variant="outline" onClick={() => setShowEnrollmentModal(false)}>
+              Back to Course
+            </Button>
+            {course && course.enrollmentType === 'direct' ? (
+              <Button 
+                onClick={() => {
+                  setShowEnrollmentModal(false);
+                  handleEnroll();
+                }}
+                disabled={enrolling}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {enrolling ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Enrolling...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <CreditCard className="w-4 h-4" />
+                    <span>Enroll Now - {course.currency}{course.price.toLocaleString()}</span>
+                  </div>
+                )}
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => {
+                  setShowEnrollmentModal(false);
+                  onNavigate('/contact');
+                }}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                Contact Us for Enrollment
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

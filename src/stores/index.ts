@@ -33,10 +33,10 @@ interface AppState {
   setCurrentCourse: (course: Course | null) => void;
   addEnrolledCourse: (course: Course) => void;
   
-  // TODO: Add computed values when CourseProgress is integrated
-  // favoritesCourses: Course[];
-  // completedCourses: Course[];
-  // inProgressCourses: Course[];
+  // Computed values
+  getFavoriteCourses: () => Course[];
+  getCompletedCourses: () => Course[];
+  getInProgressCourses: () => Course[];
 }
 
 export const useAppStore = create<AppState>()(
@@ -69,15 +69,23 @@ export const useAppStore = create<AppState>()(
       setCurrentCourse: (currentCourse) => set({ currentCourse }),
       addEnrolledCourse: (course) => set((state) => ({
         enrolledCourses: [...state.enrolledCourses, course]
-      }))
+      })),
       
-      // TODO: Add computed values for favorites and progress when CourseProgress is integrated
-      // get favoritesCourses() {
-      //   return get().enrolledCourses.filter(course => course.isFavorite);
-      // },
-      // 
-      // get completedCourses() {
-      //   return get().enrolledCourses.filter(course => course.progress === 100);
+      // Computed values - basic implementation for favorites and progress
+      getFavoriteCourses: () => {
+        // For now, return empty array since we don't have favorite marking yet
+        return [];
+      },
+      getCompletedCourses: () => {
+        // For now, return empty array since we don't have progress tracking yet
+        return [];
+      },
+      getInProgressCourses: () => {
+        // Return all enrolled courses as in-progress for now
+        return get().enrolledCourses;
+      }
+      
+      // TODO: Implement proper progress tracking and favorites when CourseProgress is integrated
       // },
       // 
       // get inProgressCourses() {

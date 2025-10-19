@@ -6,9 +6,10 @@ import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { dbHelpers } from '../lib/firebase';
-import { DashboardSkeleton } from './LoadingStates';
-import { ErrorState } from './ErrorStates';
+import { DashboardSkeleton } from './common/LoadingStates';
+import { ErrorState } from './common/ErrorStates';
 import { NavigatePath } from '../types';
 import {
   CalendarDays,
@@ -33,7 +34,46 @@ export function MyCoursesPage({ onNavigate }: MyCoursesPageProps) {
   const [myCourses, setMyCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [listeners, setListeners] = useState<(() => void)[]>([]);
   const { user } = useAuth();
+  const { success, error: showError, warning } = useToast();
+
+  useEffect(() => {
+    if (user) {
+      loadMyCourses();
+    }
+    
+    // Cleanup listeners on unmount
+    return () => {
+      listeners.forEach(unsubscribe => unsubscribe());
+    };
+  }, [user]);
+
+  const setupRealTimeListeners = (courses: any[]) => {
+    // Clean up existing listeners
+    listeners.forEach(unsubscribe => unsubscribe());
+    
+    const newListeners: (() => void)[] = [];
+    
+    courses.forEach((courseData, index) => {
+      const unsubscribe = dbHelpers.listenToScheduledClasses(courseData.course.id, (updatedClasses) => {
+        setMyCourses(prevCourses => {
+          const newCourses = [...prevCourses];
+          if (newCourses[index]) {
+            newCourses[index] = {
+              ...newCourses[index],
+              upcomingClasses: updatedClasses.slice(0, 5),
+              nextClass: updatedClasses[0] || null
+            };
+          }
+          return newCourses;
+        });
+      });
+      newListeners.push(unsubscribe);
+    });
+    
+    setListeners(newListeners);
+  };
 
   useEffect(() => {
     if (user) {
@@ -57,6 +97,8 @@ export function MyCoursesPage({ onNavigate }: MyCoursesPageProps) {
         setError(error);
       } else {
         setMyCourses(data);
+        // Set up real-time listeners for schedule updates
+        setupRealTimeListeners(data);
       }
     } catch (err: any) {
       setError('Failed to load your courses');
@@ -304,8 +346,16 @@ export function MyCoursesPage({ onNavigate }: MyCoursesPageProps) {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            // TODO: Show schedule modal
-                            console.log('Show schedule for', myCourse.course.id);
+                            // Show schedule information in a toast
+                            const scheduleInfo = myCourse.upcomingClasses
+                              .slice(0, 3)
+                              .map((cls: any) => `${cls.title} - ${formatDateTime(cls.date)}`)
+                              .join('\n');
+                            
+                            success(
+                              'Upcoming Classes', 
+                              `Next classes for ${myCourse.course.title}:\n${scheduleInfo}${myCourse.upcomingClasses.length > 3 ? '\n...and more' : ''}`
+                            );
                           }}
                         >
                           <Calendar className="w-4 h-4" />

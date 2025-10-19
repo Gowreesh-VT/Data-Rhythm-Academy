@@ -10,19 +10,47 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
-    // Users collection - users can only read/write their own data
-    match /users/{userId} {
-      allow read, write: if isAuthenticated() && isOwner(userId);
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isInstructor() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'instructor';
     }
 
-    // Courses collection
+    // Users collection - users can read/write their own data, admins can read all
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Admin logs collection - only admins can access
+    match /admin_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Instructor-student relationships - admins and related instructors can access
+    match /instructor_student_relationships/{relationshipId} {
+      allow read, write: if isAdmin();
+      allow read: if isAuthenticated() && 
+                     (request.auth.uid == resource.data.instructorId || 
+                      request.auth.uid == resource.data.studentId);
+    }    // Courses collection
     match /courses/{courseId} {
       // Anyone can read courses
       allow read: if true;
       // Only authenticated users can create/update courses
       allow create, update: if request.auth != null;
-      // Only the course creator can delete
-      allow delete: if request.auth != null && request.auth.uid == resource.data.instructorId;
+      // Only the course creator or admin can delete
+      allow delete: if request.auth != null && 
+                       (request.auth.uid == resource.data.instructorId || isAdmin());
+      // Admins can manage all courses
+      allow write: if isAdmin();
     }
 
     // Enrollments collection
@@ -35,6 +63,10 @@ service cloud.firestore {
       allow update: if request.auth != null && request.auth.uid == resource.data.userId;
       // Users can delete their own enrollments
       allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Admins can access all enrollments
+      allow read, write: if isAdmin();
+      // Instructors can read enrollments for their courses
+      allow read: if isInstructor();
     }
 
     // Posts collection (for course discussions, reviews, etc.)

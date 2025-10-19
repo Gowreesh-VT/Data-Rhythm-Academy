@@ -3,31 +3,50 @@ import { Course } from '../types';
 import { Card, CardContent, CardFooter, CardHeader } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Star, Clock, Users, Play, Heart, Download, Monitor, Award, Calendar, Video } from 'lucide-react';
+import { Star, Clock, Users, Play, Heart, Download, Monitor, Award, Calendar, Video, CreditCard, MessageCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { ImageWithFallback } from './ImageWithFallback';
+import { ImageWithFallback } from './common/ImageWithFallback';
+import { usePayment } from '../hooks/usePayment';
+import { formatAmount } from '../lib/razorpay';
 
 interface CourseCardProps {
   course: Course;
   onEnroll?: (courseId: string) => void;
   onPreview?: (courseId: string) => void;
+  onEnquire?: (courseId: string) => void;
   isEnrolled?: boolean;
   showProgress?: boolean;
   progress?: number;
   showWishlistButton?: boolean;
+  onNavigate?: (path: string) => void;
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
   course,
   onEnroll,
   onPreview,
+  onEnquire,
   isEnrolled = false,
   showProgress = false,
   progress = 0,
-  showWishlistButton = true
+  showWishlistButton = true,
+  onNavigate
 }) => {
   const { user } = useAuth();
   const [isInWishlist, setIsInWishlist] = useState(false);
+  
+  // Payment hook
+  const { processPayment, isProcessing } = usePayment({
+    onSuccess: (paymentData, enrollmentId) => {
+      // Navigate to My Courses after successful enrollment
+      setTimeout(() => {
+        onNavigate?.('/my-courses');
+      }, 2000);
+    },
+    onError: (error) => {
+      console.error('Payment error:', error);
+    }
+  });
 
   useEffect(() => {
     if (user) {
@@ -36,25 +55,43 @@ export const CourseCard: React.FC<CourseCardProps> = ({
     }
   }, [user, course.id]);
 
-  const toggleWishlist = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleWishlist = () => {
     if (!user) return;
-
-    const wishlistKey = `wishlist_${user.id}`;
-    const currentWishlist = JSON.parse(localStorage.getItem(wishlistKey) || '[]');
     
-    let updatedWishlist;
+    const wishlist = JSON.parse(localStorage.getItem(`wishlist_${user.id}`) || '[]');
+    
     if (isInWishlist) {
-      updatedWishlist = currentWishlist.filter((id: string) => id !== course.id);
+      const newWishlist = wishlist.filter((id: string) => id !== course.id);
+      localStorage.setItem(`wishlist_${user.id}`, JSON.stringify(newWishlist));
+      setIsInWishlist(false);
     } else {
-      updatedWishlist = [...currentWishlist, course.id];
+      wishlist.push(course.id);
+      localStorage.setItem(`wishlist_${user.id}`, JSON.stringify(wishlist));
+      setIsInWishlist(true);
     }
-    
-    localStorage.setItem(wishlistKey, JSON.stringify(updatedWishlist));
-    setIsInWishlist(!isInWishlist);
   };
 
-  const formatDuration = (hours: number) => {
+  const handlePaymentEnrollment = async () => {
+    if (!user) {
+      onNavigate?.('/login');
+      return;
+    }
+
+    try {
+      await processPayment({
+        courseId: course.id,
+        courseTitle: course.title,
+        amount: course.price,
+        userId: user.id,
+        userEmail: user.email || '',
+        userName: user.displayName || user.email || 'Student',
+        userContact: undefined, // Phone number can be entered during payment
+        autoEnroll: true
+      });
+    } catch (error) {
+      console.error('Failed to initiate payment:', error);
+    }
+  };  const formatDuration = (hours: number) => {
     if (hours < 1) return `${Math.round(hours * 60)}min`;
     return `${Math.round(hours)}h`;
   };
@@ -230,13 +267,67 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           >
             Continue Learning
           </Button>
+        ) : course.enrollmentType === 'enquiry' ? (
+          <div className="w-full space-y-2">
+            <div className="flex justify-between items-center text-sm">
+              <span className="font-medium">Course Fee:</span>
+              <span className="font-bold text-lg text-blue-600">
+                {formatAmount(course.price)}
+              </span>
+            </div>
+            <Button 
+              className="w-full bg-orange-600 hover:bg-orange-700" 
+              onClick={() => onEnquire?.(course.id)}
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Enquire Now
+            </Button>
+          </div>
+        ) : course.price > 0 ? (
+          <div className="w-full space-y-2">
+            <div className="flex justify-between items-center text-sm">
+              <span className="font-medium">Course Fee:</span>
+              <span className="font-bold text-lg text-green-600">
+                {formatAmount(course.price)}
+              </span>
+            </div>
+            <Button 
+              className="w-full" 
+              onClick={handlePaymentEnrollment}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <CreditCard className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Enroll Now - {formatAmount(course.price)}
+                </>
+              )}
+            </Button>
+          </div>
         ) : (
-          <Button 
-            className="w-full" 
-            onClick={() => onEnroll?.(course.id)}
-          >
-            Enroll Now
-          </Button>
+          <>
+            {course.enrollmentType === 'direct' ? (
+              <Button 
+                className="w-full" 
+                onClick={() => onEnroll?.(course.id)}
+              >
+                Enroll Now
+              </Button>
+            ) : (
+              <Button 
+                className="w-full" 
+                variant="outline"
+                onClick={() => window.location.href = '/contact'}
+              >
+                Contact Us
+              </Button>
+            )}
+          </>
         )}
       </CardFooter>
     </Card>

@@ -2,25 +2,31 @@ import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ToastProvider } from "./contexts/ToastContext";
-import { LandingPage } from "./components/LandingPage";
-import { LoginPage } from "./components/LoginPage";
-import { RegisterPage } from "./components/RegisterPage";
-import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
-import { AboutPage } from "./components/AboutPage";
-import { CoursesPage } from "./components/CoursesPage";
-import { StudentDashboard } from "./components/StudentDashboard";
-import { MyCoursesPage } from "./components/MyCoursesPage";
-import { CalendarPage } from "./components/CalendarPage";
-import { InstructorDashboard } from "./components/InstructorDashboard";
-import { AdminDashboard } from "./components/AdminDashboard";
-import { CourseDetailPage } from "./components/CourseDetailPage";
-import { LessonViewer } from "./components/LessonViewer";
-import { UserProfilePage } from "./components/UserProfilePage";
-import { WishlistPage } from "./components/WishlistPage";
-import { ContactPage } from "./components/ContactPage";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import { LandingPage } from "./components/pages/LandingPage";
+import { LoginPage } from "./components/auth/LoginPage";
+import { RegisterPage } from "./components/auth/RegisterPage";
+import { PrivacyPolicyPage } from "./components/pages/PrivacyPolicyPage";
+import { AboutPage } from "./components/pages/AboutPage";
+import { CoursesPage } from "./components/course/CoursesPage";
+import { CourseCreationPage } from "./components/course/CourseCreationPage";
+import { StudentDashboard } from "./components/dashboard/StudentDashboard";
+import { MyCoursesPage } from "./components/course/MyCoursesPage";
+import { CalendarPage } from "./components/pages/CalendarPage";
+import { ClassTimetablePage } from "./components/class-management/ClassTimetablePage";
+import { InstructorDashboard } from "./components/dashboard/InstructorDashboard";
+import { AdminDashboard } from "./components/dashboard/AdminDashboard";
+import { AdminDashboardEnhanced } from "./components/AdminDashboardEnhanced";
+import { CourseDetailPage } from "./components/course/CourseDetailPage";
+import { LessonViewer } from "./components/course/LessonViewer";
+import { UserProfilePage } from "./components/dashboard/UserProfilePage";
+import { WishlistPage } from "./components/common/WishlistPage";
+import { ContactPage } from "./components/pages/ContactPage";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { useNetworkStatus, OfflineNotification } from "./hooks/useNetworkStatus";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { AuthErrorBoundary } from "./components/auth/AuthErrorBoundary";
+import { CourseErrorBoundary } from "./components/course/CourseErrorBoundary";
+import { PaymentErrorBoundary } from "./components/common/PaymentErrorBoundary";
 import { useAnalytics, useSessionTracking } from "./hooks/useAnalytics";
 
 function AppContent() {
@@ -144,19 +150,23 @@ function AppContent() {
       <Route
         path="/login"
         element={
-          <LoginPage
-            onNavigate={handleNavigate}
-            onLogin={handleLogin}
-          />
+          <AuthErrorBoundary onRetry={() => window.location.reload()}>
+            <LoginPage
+              onNavigate={handleNavigate}
+              onLogin={handleLogin}
+            />
+          </AuthErrorBoundary>
         }
       />
       <Route
         path="/register"
         element={
-          <RegisterPage
-            onNavigate={handleNavigate}
-            onRegister={handleRegister}
-          />
+          <AuthErrorBoundary onRetry={() => window.location.reload()}>
+            <RegisterPage
+              onNavigate={handleNavigate}
+              onRegister={handleRegister}
+            />
+          </AuthErrorBoundary>
         }
       />
       <Route
@@ -178,19 +188,33 @@ function AppContent() {
       <Route
         path="/courses"
         element={
-          <CoursesPage
-            onNavigate={handleNavigate}
-            onLogout={handleLogout}
-          />
+          <CourseErrorBoundary onRetry={() => window.location.reload()} onGoBack={() => navigate('/')}>
+            <CoursesPage
+              onNavigate={handleNavigate}
+              onLogout={handleLogout}
+            />
+          </CourseErrorBoundary>
+        }
+      />
+      <Route
+        path="/create-course"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <CourseCreationPage
+              onNavigate={handleNavigate}
+            />
+          </ProtectedRoute>
         }
       />
       <Route
         path="/course/:courseId"
         element={
-          <CourseDetailPage
-            onNavigate={handleNavigate}
-            onLogout={handleLogout}
-          />
+          <CourseErrorBoundary onRetry={() => window.location.reload()} onGoBack={() => navigate('/courses')}>
+            <CourseDetailPage
+              onNavigate={handleNavigate}
+              onLogout={handleLogout}
+            />
+          </CourseErrorBoundary>
         }
       />
       <Route
@@ -205,9 +229,11 @@ function AppContent() {
       <Route
         path="/my-courses"
         element={
-          <MyCoursesPage
-            onNavigate={handleNavigate}
-          />
+          <CourseErrorBoundary onRetry={() => window.location.reload()} onGoBack={() => navigate('/dashboard')}>
+            <MyCoursesPage
+              onNavigate={handleNavigate}
+            />
+          </CourseErrorBoundary>
         }
       />
       <Route
@@ -216,6 +242,16 @@ function AppContent() {
           <CalendarPage
             onNavigate={handleNavigate}
           />
+        }
+      />
+      <Route
+        path="/timetable"
+        element={
+          <ProtectedRoute>
+            <ClassTimetablePage
+              onNavigate={handleNavigate}
+            />
+          </ProtectedRoute>
         }
       />
       <Route
@@ -231,7 +267,7 @@ function AppContent() {
         path="/admin-dashboard"
         element={
           <ProtectedRoute requiredRole="admin">
-            <AdminDashboard
+            <AdminDashboardEnhanced
               onNavigate={handleNavigate}
               onLogout={handleLogout}
             />

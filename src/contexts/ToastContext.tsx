@@ -8,16 +8,22 @@ interface Toast {
   title: string;
   message?: string;
   duration?: number;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
+  persistent?: boolean;
 }
 
 interface ToastContextType {
   toasts: Toast[];
   addToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
-  success: (title: string, message?: string) => void;
-  error: (title: string, message?: string) => void;
-  warning: (title: string, message?: string) => void;
-  info: (title: string, message?: string) => void;
+  success: (title: string, message?: string, action?: Toast['action']) => void;
+  error: (title: string, message?: string, action?: Toast['action'], persistent?: boolean) => void;
+  warning: (title: string, message?: string, action?: Toast['action']) => void;
+  info: (title: string, message?: string, action?: Toast['action']) => void;
+  errorWithRetry: (title: string, message: string, onRetry: () => void) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -42,27 +48,43 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     const newToast = { ...toast, id };
     setToasts((prev) => [...prev, newToast]);
 
-    // Auto remove after duration (default 5 seconds)
-    setTimeout(() => {
-      removeToast(id);
-    }, toast.duration || 5000);
+    // Auto remove after duration (default 5 seconds) unless persistent
+    if (!toast.persistent) {
+      setTimeout(() => {
+        removeToast(id);
+      }, toast.duration || (toast.type === 'error' ? 7000 : 5000));
+    }
   };
 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  const success = (title: string, message?: string) => 
-    addToast({ type: 'success', title, message });
+  const success = (title: string, message?: string, action?: Toast['action']) => 
+    addToast({ type: 'success', title, message, action });
   
-  const error = (title: string, message?: string) => 
-    addToast({ type: 'error', title, message });
+  const error = (title: string, message?: string, action?: Toast['action'], persistent?: boolean) => 
+    addToast({ type: 'error', title, message, action, persistent });
   
-  const warning = (title: string, message?: string) => 
-    addToast({ type: 'warning', title, message });
+  const warning = (title: string, message?: string, action?: Toast['action']) => 
+    addToast({ type: 'warning', title, message, action });
   
-  const info = (title: string, message?: string) => 
-    addToast({ type: 'info', title, message });
+  const info = (title: string, message?: string, action?: Toast['action']) => 
+    addToast({ type: 'info', title, message, action });
+
+  const errorWithRetry = (title: string, message: string, onRetry: () => void) => {
+    addToast({
+      type: 'error',
+      title,
+      message,
+      action: {
+        label: 'Retry',
+        onClick: onRetry
+      },
+      persistent: true,
+      duration: 10000
+    });
+  };
 
   const getIcon = (type: Toast['type']) => {
     switch (type) {
@@ -83,7 +105,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   };
 
   return (
-    <ToastContext.Provider value={{ toasts, addToast, removeToast, success, error, warning, info }}>
+    <ToastContext.Provider value={{ toasts, addToast, removeToast, success, error, warning, info, errorWithRetry }}>
       {children}
       
       {/* Toast Container */}
@@ -109,6 +131,17 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
                   <h4 className="font-medium text-sm">{toast.title}</h4>
                   {toast.message && (
                     <p className="text-sm opacity-90 mt-1">{toast.message}</p>
+                  )}
+                  {toast.action && (
+                    <button
+                      onClick={() => {
+                        toast.action!.onClick();
+                        removeToast(toast.id);
+                      }}
+                      className="mt-2 text-xs font-medium underline hover:no-underline transition-all"
+                    >
+                      {toast.action.label}
+                    </button>
                   )}
                 </div>
                 <button
