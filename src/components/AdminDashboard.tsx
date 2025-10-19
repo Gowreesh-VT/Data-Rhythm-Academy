@@ -75,6 +75,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
   const [showCreateCourseModal, setShowCreateCourseModal] = useState(false);
   const [availableInstructors, setAvailableInstructors] = useState<User[]>([]);
   const [creatingCourse, setCreatingCourse] = useState(false);
+
+  // Debug effect to log modal state changes
+  useEffect(() => {
+    console.log('showCreateCourseModal state changed:', showCreateCourseModal);
+  }, [showCreateCourseModal]);
   
   // Unique ID management states
   const [showUniqueIdModal, setShowUniqueIdModal] = useState(false);
@@ -591,11 +596,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
                     <p className="text-gray-600 mt-1">Manage courses, enrollments, and instructor assignments</p>
                   </div>
                   <Button 
-                    onClick={() => setShowCreateCourseModal(true)}
+                    onClick={() => {
+                      console.log('Create Course button clicked');
+                      setShowCreateCourseModal(true);
+                    }}
                     className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-all hover:shadow-lg"
                   >
                     <Plus className="w-5 h-5 mr-2 font-bold" />
-                    <span className="text-blue-500">Create New Course</span>
+                    <span className="text-white">Create New Course</span>
                   </Button>
                 </div>
 
