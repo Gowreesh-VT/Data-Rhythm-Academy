@@ -14,8 +14,7 @@ import { MyCoursesPage } from "./components/course/MyCoursesPage";
 import { CalendarPage } from "./components/pages/CalendarPage";
 import { ClassTimetablePage } from "./components/class-management/ClassTimetablePage";
 import { InstructorDashboard } from "./components/dashboard/InstructorDashboard";
-import { AdminDashboard } from "./components/dashboard/AdminDashboard";
-import { AdminDashboardEnhanced } from "./components/AdminDashboardEnhanced";
+import { AdminDashboard } from "./components/AdminDashboard";
 import { CourseDetailPage } from "./components/course/CourseDetailPage";
 import { LessonViewer } from "./components/course/LessonViewer";
 import { UserProfilePage } from "./components/dashboard/UserProfilePage";
@@ -267,7 +266,7 @@ function AppContent() {
         path="/admin-dashboard"
         element={
           <ProtectedRoute requiredRole="admin">
-            <AdminDashboardEnhanced
+            <AdminDashboard
               onNavigate={handleNavigate}
               onLogout={handleLogout}
             />

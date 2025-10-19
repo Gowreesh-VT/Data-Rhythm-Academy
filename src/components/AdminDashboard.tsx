@@ -1,30 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../contexts/ToastContext';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { User, UserManagementData, NavigatePath, Course } from '../types';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Alert, AlertDescription } from './ui/alert';
-import { Checkbox } from './ui/checkbox';
-import { Loader2, Users, GraduationCap, Shield, Activity, UserPlus, Settings, BookOpen, Plus, Trash2, Edit } from 'lucide-react';
+import { 
+  Users, 
+  UserCheck, 
+  Shield, 
+  Settings,
+  Activity,
+  AlertTriangle,
+  Search,
+  Plus,
+  Edit,
+  Eye,
+  LogOut,
+  BookOpen,
+  TrendingUp,
+  DollarSign,
+  BarChart3,
+  CreditCard,
+  Mail
+} from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { 
   getAllUsers, 
-  getUserManagementStats, 
   updateUserRole, 
-  updateUserStatus,
-  assignStudentToInstructor,
-  removeStudentFromInstructor,
+  updateUserStatus, 
+  getUserManagementStats,
   getPublishedCourses,
-  deleteCourse
+  updateCourse,
+  generateUniqueId,
+  assignUniqueId,
+  getAvailableInstructors,
+  createCourse
 } from '../lib/database';
-import { User, UserManagementData, Course } from '../types';
-import { removeTemporaryAdmin, listAdminUsers } from '../utils/adminSetup';
+import { logger } from '../utils/logger';
 
 interface AdminDashboardProps {
-  onNavigate: (path: string) => void;
+  onNavigate: (path: NavigatePath) => void;
   onLogout: () => void;
 }
 
@@ -32,298 +54,291 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
   const { user } = useAuth();
   const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState<User[]>([]);
-  const [stats, setStats] = useState<UserManagementData | null>(null);
-  const [selectedRole, setSelectedRole] = useState<'all' | 'student' | 'instructor' | 'admin'>('all');
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'suspended' | 'pending'>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'email' | 'joinDate' | 'lastActivity' | 'role'>('joinDate');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [updatingUser, setUpdatingUser] = useState<string | null>(null);
-  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
-
-  // Course management state
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [stats, setStats] = useState<UserManagementData | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  
+  // Course management states
   const [courses, setCourses] = useState<Course[]>([]);
-  const [loadingCourses, setLoadingCourses] = useState(false);
-  const [deletingCourse, setDeletingCourse] = useState<string | null>(null);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [selectedCourseForEdit, setSelectedCourseForEdit] = useState<Course | null>(null);
+  const [showCourseEditModal, setShowCourseEditModal] = useState(false);
+  const [updatingCourse, setUpdatingCourse] = useState(false);
+  
+  // Course creation states
+  const [showCreateCourseModal, setShowCreateCourseModal] = useState(false);
+  const [availableInstructors, setAvailableInstructors] = useState<User[]>([]);
+  const [creatingCourse, setCreatingCourse] = useState(false);
+  
+  // Unique ID management states
+  const [showUniqueIdModal, setShowUniqueIdModal] = useState(false);
+  const [selectedUserForId, setSelectedUserForId] = useState<User | null>(null);
+  const [newUniqueId, setNewUniqueId] = useState('');
+  const [assigningUniqueId, setAssigningUniqueId] = useState(false);
 
-  // Load data on component mount
   useEffect(() => {
-    loadDashboardData();
-    loadCourses(); // Also load courses on mount
-  }, []);
+    if (user?.role === 'admin') {
+      loadAdminData();
+      loadCoursesData();
+      loadInstructorsData();
+    }
+  }, [user]);
+  
+  const loadInstructorsData = async () => {
+    try {
+      const instructorsResult = await getAvailableInstructors();
+      if (instructorsResult.data) {
+        setAvailableInstructors(instructorsResult.data);
+      }
+    } catch (error) {
+      logger.error('Error loading instructors:', error);
+    }
+  };
 
-  const loadDashboardData = async () => {
+  useEffect(() => {
+    filterUsers();
+  }, [users, searchTerm, roleFilter, statusFilter]);
+
+  const loadAdminData = async () => {
     setLoading(true);
     setError(null);
-    
     try {
-      // First, check if the current user is actually an admin
-      if (!user || user.role !== 'admin') {
-        throw new Error('Access denied: Admin role required');
-      }
-
-      // Load user management statistics
-      const statsResult = await getUserManagementStats();
-      if (statsResult.error) {
-        if (statsResult.error.message?.includes('permission-denied')) {
-          throw new Error('Permission denied: Please ensure you have admin role in Firestore and the security rules are deployed');
-        }
-        throw statsResult.error;
-      }
-      setStats(statsResult.data);
-
+      logger.info('Loading admin data...');
+      
       // Load all users
       const usersResult = await getAllUsers();
       if (usersResult.error) {
-        if (usersResult.error.message?.includes('permission-denied')) {
-          throw new Error('Permission denied: Unable to access user data. Please check your admin permissions.');
+        logger.error('Error loading users:', usersResult.error);
+        setError('Failed to load users data from Firestore');
+        setUsers([]);
+        setStats(null);
+      } else if (usersResult.data) {
+        logger.info(`Loaded ${usersResult.data.length} users`);
+        setUsers(usersResult.data);
+        
+        // Load management stats
+        const statsResult = await getUserManagementStats();
+        if (statsResult.error) {
+          logger.error('Error loading stats:', statsResult.error);
+          setStats(null);
+        } else if (statsResult.data) {
+          setStats(statsResult.data);
         }
-        throw usersResult.error;
+      } else {
+        // No users found in Firestore
+        logger.info('No users found in Firestore');
+        setUsers([]);
+        setStats(null);
       }
-      setUsers(usersResult.data || []);
-      
-    } catch (err: any) {
-      console.error('Error loading dashboard data:', err);
-      const errorMessage = err.message || 'Failed to load dashboard data. Please try again.';
-      setError(errorMessage);
-      showError('Failed to load dashboard data', errorMessage);
+    } catch (error) {
+      logger.error('Error loading admin data:', error);
+      setError('Failed to connect to Firestore database');
+      setUsers([]);
+      setStats(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadCourses = async () => {
-    setLoadingCourses(true);
+  const loadCoursesData = async () => {
     try {
       const coursesResult = await getPublishedCourses();
       if (coursesResult.error) {
-        throw coursesResult.error;
+        logger.error('Error loading courses:', coursesResult.error);
+        setCourses([]);
+      } else if (coursesResult.data) {
+        setCourses(coursesResult.data);
+      } else {
+        setCourses([]);
       }
-      setCourses(coursesResult.data || []);
-    } catch (err: any) {
-      console.error('Error loading courses:', err);
-      showError('Failed to load courses', err.message || 'Please try again.');
-    } finally {
-      setLoadingCourses(false);
+    } catch (error) {
+      logger.error('Error loading courses:', error);
+      setCourses([]);
     }
   };
 
-  const handleDeleteCourse = async (courseId: string) => {
-    if (!user?.id || deletingCourse) return;
+
+
+  const handleUpdateCourseEnrollmentType = async (courseId: string, enrollmentType: 'direct' | 'enquiry') => {
+    if (!user?.id) return;
     
-    if (!confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
-      return;
-    }
-    
-    setDeletingCourse(courseId);
+    setUpdatingCourse(true);
     try {
-      const result = await deleteCourse(courseId, user.id);
-      if (result.error) {
-        throw result.error;
-      }
+      const result = await updateCourse(courseId, { enrollmentType }, user.id);
       
-      // Remove course from local state
-      setCourses(prev => prev.filter(c => c.id !== courseId));
-      success('Course deleted', 'The course has been successfully deleted.');
-    } catch (err: any) {
-      console.error('Error deleting course:', err);
-      showError('Failed to delete course', err.message || 'Please try again.');
-    } finally {
-      setDeletingCourse(null);
-    }
-  };
-
-  const handleRoleChange = async (userId: string, newRole: 'student' | 'instructor' | 'admin') => {
-    if (!user?.id || updatingUser) return;
-    
-    setUpdatingUser(userId);
-    try {
-      const result = await updateUserRole(userId, newRole, user.id);
       if (result.error) {
-        throw result.error;
+        showError('Update Failed', 'Failed to update course enrollment type');
+        return;
       }
       
       // Update local state
-      setUsers(prev => prev.map(u => 
-        u.id === userId ? { ...u, role: newRole } : u
+      setCourses(prev => prev.map(course => 
+        course.id === courseId ? { ...course, enrollmentType } : course
       ));
       
-      success(`User role updated to ${newRole}`);
-    } catch (err) {
-      console.error('Error updating user role:', err);
-      showError('Failed to update user role', 'Please check your permissions and try again');
+      success('Course Updated', 'Enrollment type updated successfully');
+      setShowCourseEditModal(false);
+      
+    } catch (error) {
+      logger.error('Error updating course:', error);
+      showError('Update Failed', 'An unexpected error occurred');
     } finally {
-      setUpdatingUser(null);
+      setUpdatingCourse(false);
+    }
+  };
+  
+  // Unique ID management handlers
+  const handleOpenUniqueIdModal = (user: User) => {
+    setSelectedUserForId(user);
+    setNewUniqueId(user.uniqueId || '');
+    setShowUniqueIdModal(true);
+  };
+  
+  const handleGenerateUniqueId = async () => {
+    if (!selectedUserForId) return;
+    
+    try {
+      const generatedId = await generateUniqueId(selectedUserForId.role as 'instructor' | 'student');
+      setNewUniqueId(generatedId);
+    } catch (error) {
+      showError('Generation Failed', 'Failed to generate unique ID');
+    }
+  };
+  
+  const handleAssignUniqueId = async () => {
+    if (!selectedUserForId || !user?.id || !newUniqueId.trim()) return;
+    
+    setAssigningUniqueId(true);
+    try {
+      const result = await assignUniqueId(selectedUserForId.id, newUniqueId.trim(), user.id);
+      if (result.error) {
+        showError('Assignment Failed', result.error.message);
+      } else {
+        success('Success', 'Unique ID assigned successfully');
+        setShowUniqueIdModal(false);
+        loadAdminData(); // Refresh data
+      }
+    } catch (error) {
+      showError('Assignment Failed', 'Failed to assign unique ID');
+    } finally {
+      setAssigningUniqueId(false);
+    }
+  };
+  
+  // Course creation handlers
+  const handleCreateCourse = async (courseData: any) => {
+    if (!user?.id) return;
+    
+    setCreatingCourse(true);
+    try {
+      const result = await createCourse({
+        ...courseData,
+        enrollmentType: 'direct',
+        rating: 0,
+        totalRatings: 0,
+        totalStudents: 0,
+        lessons: [],
+        isPublished: false,
+        isOnline: true,
+        hasLiveSupport: true,
+        discussionEnabled: true,
+        downloadableResources: true,
+        mobileAccess: true,
+        lifetimeAccess: true,
+        completionCertificate: true,
+        closedCaptions: false,
+        scheduledClasses: [],
+        classSchedule: {
+          courseId: '',
+          pattern: 'weekly',
+          daysOfWeek: [1, 3],
+          startTime: '10:00',
+          duration: 90,
+          timezone: 'IST',
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+          totalClasses: 12,
+          classFrequency: 'Every Monday & Wednesday'
+        },
+        recordedClassesAvailable: true,
+        classNotifications: true
+      }, user.id);
+      
+      if (result.error) {
+        showError('Creation Failed', result.error.message);
+      } else {
+        success('Success', 'Course created successfully');
+        setShowCreateCourseModal(false);
+        loadCoursesData(); // Refresh courses
+      }
+    } catch (error) {
+      showError('Creation Failed', 'Failed to create course');
+    } finally {
+      setCreatingCourse(false);
+    }
+  };
+
+
+
+  const filterUsers = () => {
+    let filtered = users;
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(user => 
+        user.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Role filter
+    if (roleFilter !== 'all') {
+      filtered = filtered.filter(user => user.role === roleFilter);
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(user => user.profileStatus === statusFilter);
+    }
+
+    setFilteredUsers(filtered);
+  };
+
+  const handleRoleChange = async (userId: string, newRole: 'student' | 'instructor' | 'admin') => {
+    if (!user?.id) return;
+    
+    try {
+      await updateUserRole(userId, newRole, user.id);
+      loadAdminData(); // Refresh data
+    } catch (error) {
+      console.error('Error updating user role:', error);
     }
   };
 
   const handleStatusChange = async (userId: string, newStatus: 'active' | 'suspended' | 'pending') => {
-    if (!user?.id || updatingUser) return;
-    
-    setUpdatingUser(userId);
-    try {
-      const result = await updateUserStatus(userId, newStatus, user.id);
-      if (result.error) {
-        throw result.error;
-      }
-      
-      // Update local state
-      setUsers(prev => prev.map(u => 
-        u.id === userId ? { ...u, profileStatus: newStatus } : u
-      ));
-      
-      success(`User status updated to ${newStatus}`);
-    } catch (err) {
-      console.error('Error updating user status:', err);
-      showError('Failed to update user status', 'Please check your permissions and try again');
-    } finally {
-      setUpdatingUser(null);
-    }
-  };
-
-  const handleSelectUser = (userId: string, checked: boolean) => {
-    const newSelected = new Set(selectedUsers);
-    if (checked) {
-      newSelected.add(userId);
-    } else {
-      newSelected.delete(userId);
-    }
-    setSelectedUsers(newSelected);
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedUsers(new Set(filteredAndSortedUsers.map(u => u.id)));
-    } else {
-      setSelectedUsers(new Set());
-    }
-  };
-
-  const handleBulkStatusChange = async (newStatus: 'active' | 'suspended' | 'pending') => {
-    if (!user?.id || selectedUsers.size === 0) return;
-    
-    setUpdatingUser('bulk');
-    const selectedArray = Array.from(selectedUsers);
+    if (!user?.id) return;
     
     try {
-      const results = await Promise.all(
-        selectedArray.map(userId => updateUserStatus(userId, newStatus, user.id))
-      );
-      
-      const hasErrors = results.some(result => result.error);
-      if (hasErrors) {
-        throw new Error('Some updates failed');
-      }
-      
-      // Update local state
-      setUsers(prev => prev.map(u => 
-        selectedUsers.has(u.id) ? { ...u, profileStatus: newStatus } : u
-      ));
-      
-      success(`Updated ${selectedUsers.size} users to ${newStatus}`);
-      setSelectedUsers(new Set());
-    } catch (err) {
-      console.error('Error bulk updating user status:', err);
-      showError('Bulk update failed', 'Some users may not have been updated');
-    } finally {
-      setUpdatingUser(null);
+      await updateUserStatus(userId, newStatus, user.id);
+      loadAdminData(); // Refresh data
+    } catch (error) {
+      console.error('Error updating user status:', error);
     }
   };
 
-  const handleRemoveTemporaryAdmin = async () => {
-    if (!confirm('Are you sure you want to remove the temporary admin user (admin@dataridythmacademy.com)?')) {
-      return;
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin': return 'bg-red-100 text-red-800';
+      case 'instructor': return 'bg-blue-100 text-blue-800';
+      case 'student': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-    
-    setUpdatingUser('temp-admin');
-    try {
-      const result = await removeTemporaryAdmin();
-      if (result.error) {
-        throw result.error;
-      }
-      
-      if (result.removedUser) {
-        success('Temporary admin user removed successfully');
-        // Refresh the user list
-        await loadDashboardData();
-      } else {
-        success(result.message || 'No temporary admin user found');
-      }
-    } catch (err) {
-      console.error('Error removing temporary admin:', err);
-      showError('Failed to remove temporary admin', 'Please try again or check the console for details');
-    } finally {
-      setUpdatingUser(null);
-    }
-  };
-
-  // Filter and sort users based on multiple criteria
-  const filteredAndSortedUsers = users
-    .filter(user => {
-      const matchesRole = selectedRole === 'all' || user.role === selectedRole;
-      const matchesStatus = selectedStatus === 'all' || user.profileStatus === selectedStatus;
-      const matchesSearch = !searchTerm || 
-        user.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesRole && matchesStatus && matchesSearch;
-    })
-    .sort((a, b) => {
-      let aValue: any, bValue: any;
-      
-      switch (sortBy) {
-        case 'name':
-          aValue = a.displayName?.toLowerCase() || '';
-          bValue = b.displayName?.toLowerCase() || '';
-          break;
-        case 'email':
-          aValue = a.email?.toLowerCase() || '';
-          bValue = b.email?.toLowerCase() || '';
-          break;
-        case 'joinDate':
-          aValue = new Date(a.createdAt || 0).getTime();
-          bValue = new Date(b.createdAt || 0).getTime();
-          break;
-        case 'lastActivity':
-          aValue = new Date(a.lastActivity || a.lastLoginAt || 0).getTime();
-          bValue = new Date(b.lastActivity || b.lastLoginAt || 0).getTime();
-          break;
-        case 'role':
-          aValue = a.role;
-          bValue = b.role;
-          break;
-        default:
-          return 0;
-      }
-      
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-  const formatDate = (date: any) => {
-    if (!date) return 'Unknown';
-    const d = date.toDate ? date.toDate() : new Date(date);
-    return d.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const formatRelativeTime = (date: any) => {
-    if (!date) return 'Never';
-    const d = date.toDate ? date.toDate() : new Date(date);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - d.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return '1 day ago';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
-    if (diffDays < 365) return `${Math.ceil(diffDays / 30)} months ago`;
-    return `${Math.ceil(diffDays / 365)} years ago`;
   };
 
   const getStatusColor = (status: string) => {
@@ -335,22 +350,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
     }
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'admin': return 'bg-purple-100 text-purple-800';
-      case 'instructor': return 'bg-blue-100 text-blue-800';
-      case 'student': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  if (loading) {
+  if (!user || user.role !== 'admin') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Loading admin dashboard...</p>
-        </div>
+        <Alert className="max-w-md">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Access denied. You must be an administrator to view this page.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -358,525 +366,1049 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow">
+      <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-600">Manage users, courses, and system settings</p>
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h1 className="text-2xl font-bold text-blue-600 cursor-pointer" onClick={() => onNavigate('/')}>
+                Data Rhythm Academy - Admin
+              </h1>
             </div>
-            <div className="flex space-x-4">
-              <Button variant="outline" onClick={() => onNavigate('/')}>
-                Back to Site
-              </Button>
-              <Button variant="destructive" onClick={onLogout}>
-                Logout
+            <nav className="hidden md:flex items-center space-x-6">
+              <button 
+                onClick={() => onNavigate('/courses')} 
+                className="text-blue-600 font-medium hover:text-blue-700 transition-colors"
+              >
+                Browse Courses
+              </button>
+              <button 
+                onClick={() => onNavigate('/profile')} 
+                className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
+              >
+                Profile
+              </button>
+            </nav>
+            <div className="flex items-center space-x-4">
+              <span className="hidden sm:block text-sm text-gray-700">
+                Hello, {user.displayName || user.email}
+              </span>
+              <Button variant="outline" size="sm" onClick={onLogout} className="hover:bg-red-50 hover:border-red-200">
+                <LogOut className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Logout</span>
               </Button>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-8">
+        {/* Error State */}
         {error && (
           <Alert className="mb-6 border-red-200 bg-red-50">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-800">
               {error}
-              {error.includes('Permission denied') && (
-                <div className="mt-2">
-                  <p className="text-sm">To fix this issue:</p>
-                  <ol className="text-sm list-decimal list-inside mt-1">
-                    <li>Ensure your user account has the 'admin' role in Firestore</li>
-                    <li>Make sure the updated security rules are deployed</li>
-                    <li>Try refreshing the page after making changes</li>
-                  </ol>
-                </div>
-              )}
+              <div className="flex space-x-2 mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={loadAdminData}
+                >
+                  Retry Connection
+                </Button>
+              </div>
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Statistics Cards */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalUsers}</div>
-                <p className="text-xs text-muted-foreground">
-                  +{stats.recentSignups.length} this week
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Students</CardTitle>
-                <GraduationCap className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalStudents}</div>
-                <p className="text-xs text-muted-foreground">
-                  {Math.round((stats.totalStudents / stats.totalUsers) * 100)}% of total
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Instructors</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalInstructors}</div>
-                <p className="text-xs text-muted-foreground">
-                  {Math.round((stats.totalInstructors / stats.totalUsers) * 100)}% of total
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.activeUsers}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.suspendedUsers} suspended
-                </p>
-              </CardContent>
-            </Card>
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading admin dashboard...</p>
           </div>
         )}
 
-        {/* Main Content */}
-        <Tabs defaultValue="users" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="users">User Management</TabsTrigger>
-            <TabsTrigger value="courses">Course Management</TabsTrigger>
-            <TabsTrigger value="recent">Recent Activity</TabsTrigger>
-            <TabsTrigger value="settings">System Settings</TabsTrigger>
-          </TabsList>
+        {/* Dashboard Content */}
+        {!loading && (
+          <>
 
-          <TabsContent value="users" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>User Management</CardTitle>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                  <Input
-                    placeholder="Search users..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="lg:col-span-2"
-                  />
-                  
-                  <Select value={selectedRole} onValueChange={(value: any) => setSelectedRole(value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filter by role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Roles</SelectItem>
-                      <SelectItem value="student">Students</SelectItem>
-                      <SelectItem value="instructor">Instructors</SelectItem>
-                      <SelectItem value="admin">Admins</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select value={selectedStatus} onValueChange={(value: any) => setSelectedStatus(value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="suspended">Suspended</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <div className="flex space-x-2">
-                    <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sort by" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="joinDate">Join Date</SelectItem>
-                        <SelectItem value="name">Name</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="lastActivity">Last Activity</SelectItem>
-                        <SelectItem value="role">Role</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                      className="px-3"
-                    >
-                      {sortOrder === 'asc' ? '↑' : '↓'}
-                    </Button>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Users className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Total Users</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.totalUsers || users.length}</p>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex justify-between items-center text-sm text-gray-600">
-                  <div className="flex items-center space-x-4">
-                    <span>Showing {filteredAndSortedUsers.length} of {users.length} users</span>
-                    {selectedUsers.size > 0 && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-blue-600 font-medium">{selectedUsers.size} selected</span>
-                        <Select onValueChange={(value) => handleBulkStatusChange(value as any)}>
-                          <SelectTrigger className="w-40 h-8">
-                            <SelectValue placeholder="Bulk action" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="active">Set Active</SelectItem>
-                            <SelectItem value="suspended">Set Suspended</SelectItem>
-                            <SelectItem value="pending">Set Pending</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setSelectedUsers(new Set())}
-                          disabled={updatingUser === 'bulk'}
-                        >
-                          Clear
-                        </Button>
-                      </div>
-                    )}
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <UserCheck className="h-8 w-8 text-green-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Active Users</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.activeUsers || users.filter(u => u.profileStatus === 'active').length}</p>
+                    </div>
                   </div>
-                  <Button onClick={loadDashboardData} disabled={loading} size="sm">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh'}
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <Users className="h-8 w-8 text-purple-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Instructors</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.totalInstructors || users.filter(u => u.role === 'instructor').length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-indigo-100 rounded-lg">
+                      <BookOpen className="h-8 w-8 text-indigo-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Total Courses</p>
+                      <p className="text-2xl font-bold text-gray-900">{courses.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Main Content Tabs */}
+            <Tabs defaultValue="courses" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto p-1 bg-gray-100/50 rounded-lg">
+                <TabsTrigger 
+                  value="courses" 
+                  className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs md:text-sm font-medium py-3 px-2 md:px-4 rounded-md"
+                >
+                  <span className="hidden sm:inline">Course </span>Course Manage
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="users" 
+                  className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs md:text-sm font-medium py-3 px-2 md:px-4 rounded-md"
+                >
+                  <span className="hidden sm:inline">User </span>User Manage
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="analytics" 
+                  className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs md:text-sm font-medium py-3 px-2 md:px-4 rounded-md"
+                >
+                  Analytics
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="settings" 
+                  className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs md:text-sm font-medium py-3 px-2 md:px-4 rounded-md"
+                >
+                  Settings
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Course Management Tab */}
+              <TabsContent value="courses" className="space-y-6">
+                {/* Quick Actions Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Course Management</h2>
+                    <p className="text-gray-600 mt-1">Manage courses, enrollments, and instructor assignments</p>
+                  </div>
+                  <Button 
+                    onClick={() => setShowCreateCourseModal(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg shadow-sm transition-colors"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Create New Course
                   </Button>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {filteredAndSortedUsers.length > 0 && (
-                  <div className="flex items-center space-x-4 p-4 border-b bg-gray-50 rounded-t-lg">
-                    <Checkbox
-                      checked={selectedUsers.size === filteredAndSortedUsers.length && filteredAndSortedUsers.length > 0}
-                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      Select All ({filteredAndSortedUsers.length})
-                    </span>
-                    <div className="flex-1" />
-                    <span className="text-xs text-gray-500">
-                      Role | Status | Actions
-                    </span>
-                  </div>
-                )}
-                
-                <div className="space-y-1">
-                  {filteredAndSortedUsers.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
-                      <div className="text-lg">No users found</div>
-                      <div className="text-sm">Try adjusting your filters or search terms</div>
+
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center text-lg">
+                      <Settings className="w-5 h-5 mr-2 text-blue-600" />
+                      Course Enrollment Management
+                    </CardTitle>
+                    <p className="text-sm text-gray-600">Configure how students can enroll in courses</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      {/* Course Grid */}
+                      {courses.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {courses.map((course) => (
+                            <Card key={course.id} className="overflow-hidden">
+                              <div className="aspect-video bg-gray-200 relative">
+                                <img 
+                                  src={course.thumbnailUrl} 
+                                  alt={course.title}
+                                  className="w-full h-full object-cover"
+                                />
+                                <Badge 
+                                  className={`absolute top-2 right-2 ${
+                                    course.enrollmentType === 'direct' 
+                                      ? 'bg-green-600' 
+                                      : 'bg-orange-600'
+                                  }`}
+                                >
+                                  {course.enrollmentType === 'direct' ? 'Direct Enrollment' : 'Inquiry Based'}
+                                </Badge>
+                              </div>
+                              <CardContent className="p-4">
+                                <h3 className="font-semibold text-lg mb-2 line-clamp-2">{course.title}</h3>
+                                <p className="text-gray-600 text-sm mb-2">By {course.instructorName}</p>
+                                <div className="flex justify-between items-center mb-3">
+                                  <span className="font-bold text-lg">₹{course.price.toLocaleString()}</span>
+                                  <Badge variant="outline">
+                                    {course.enrollmentType === 'direct' ? 'Enroll Now' : 'Contact Us'}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center space-x-2 text-sm text-gray-600 mb-3">
+                                  <span className="flex items-center">
+                                    <Users className="w-4 h-4 mr-1" />
+                                    {course.totalStudents}
+                                  </span>
+                                  <span className="flex items-center">
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    {course.rating}
+                                  </span>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="w-full"
+                                  onClick={() => {
+                                    setSelectedCourseForEdit(course);
+                                    setShowCourseEditModal(true);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit Enrollment Type
+                                </Button>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12">
+                          <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No Courses Found</h3>
+                          <p className="text-gray-600 mb-4">No courses have been created yet in Firestore.</p>
+                          <Button 
+                            onClick={() => setShowCreateCourseModal(true)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Your First Course
+                          </Button>
+                        </div>
+                      )}
+                      
+                      <Alert>
+                        <Settings className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>Enrollment Types:</strong><br/>
+                          • <strong>Direct Enrollment:</strong> Students see "Enroll Now" button and can proceed directly to payment<br/>
+                          • <strong>Inquiry Based:</strong> Students see "Contact Us" button and are redirected to contact page for course inquiries
+                        </AlertDescription>
+                      </Alert>
                     </div>
-                  ) : (
-                    filteredAndSortedUsers.map((user: User) => (
-                      <div key={user.id} className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                        <Checkbox
-                          checked={selectedUsers.has(user.id)}
-                          onCheckedChange={(checked) => handleSelectUser(user.id, checked as boolean)}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* User Management Tab - Simplified version of original */}
+              <TabsContent value="users" className="space-y-6">
+                {/* User Management Header */}
+                <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border">
+                  <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
+                  <p className="text-gray-600 mt-1">Manage users, roles, and permissions across the platform</p>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>User Management</CardTitle>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Search users..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10"
                         />
-                        
-                        <div className="flex items-center space-x-4 flex-1">
-                          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                            {user.photoURL ? (
-                              <img src={user.photoURL} alt={user.displayName} className="w-12 h-12 rounded-full object-cover" />
-                            ) : (
-                              <span className="text-lg font-medium text-gray-600">
-                                {user.displayName?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || '?'}
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2">
-                              <p className="font-semibold text-gray-900 truncate">{user.displayName || 'No name'}</p>
-                              <Badge className={getRoleColor(user.role)}>
-                                {user.role}
-                              </Badge>
-                              <Badge className={getStatusColor(user.profileStatus || 'pending')}>
-                                {user.profileStatus || 'pending'}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-gray-600 truncate">{user.email}</p>
-                            <div className="flex items-center space-x-4 text-xs text-gray-500 mt-1">
-                              <span>Joined: {formatDate(user.createdAt)}</span>
-                              <span>•</span>
-                              <span>Last seen: {formatRelativeTime(user.lastActivity || user.lastLoginAt)}</span>
-                              {user.enrolledCourses && (
-                                <>
-                                  <span>•</span>
-                                  <span>{user.enrolledCourses.length} courses</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3 ml-4">
-                          <div className="flex flex-col space-y-2">
-                            <Select 
-                              value={user.role} 
-                              onValueChange={(value) => handleRoleChange(user.id, value as any)}
-                              disabled={updatingUser === user.id}
-                            >
-                              <SelectTrigger className="w-32 h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="student">Student</SelectItem>
-                                <SelectItem value="instructor">Instructor</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            
-                            <Select 
-                              value={user.profileStatus || 'pending'} 
-                              onValueChange={(value) => handleStatusChange(user.id, value as any)}
-                              disabled={updatingUser === user.id}
-                            >
-                              <SelectTrigger className="w-32 h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="suspended">Suspended</SelectItem>
-                                <SelectItem value="pending">Pending</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          {updatingUser === user.id && (
-                            <div className="flex items-center justify-center w-8 h-8">
-                              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                            </div>
-                          )}
-                        </div>
                       </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="courses" className="space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Course Management</CardTitle>
-                <Button onClick={() => onNavigate('/create-course')} className="bg-blue-600 hover:bg-blue-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create New Course
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {loadingCourses ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    Loading courses...
-                  </div>
-                ) : courses.length === 0 ? (
-                  <div className="text-center py-8">
-                    <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
-                    <p className="text-gray-500 mb-4">Get started by creating your first course</p>
-                    <Button onClick={() => onNavigate('/create-course')} className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create Course
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <p className="text-sm text-gray-600">
-                        Total courses: {courses.length}
-                      </p>
-                      <Button
-                        onClick={loadCourses}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Refresh
-                      </Button>
+                      <Select value={roleFilter} onValueChange={setRoleFilter}>
+                        <SelectTrigger className="w-full sm:w-[150px]">
+                          <SelectValue placeholder="Filter by role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Roles</SelectItem>
+                          <SelectItem value="student">Students</SelectItem>
+                          <SelectItem value="instructor">Instructors</SelectItem>
+                          <SelectItem value="admin">Admins</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {courses.map((course) => (
-                        <Card key={course.id} className="relative">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="secondary">{course.category}</Badge>
-                              <Badge variant="outline">{course.level}</Badge>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            <p className="text-sm text-gray-600 line-clamp-2">{course.shortDescription}</p>
-                            <div className="flex items-center justify-between text-sm text-gray-500">
-                              <span>Students: {course.totalStudents || 0}</span>
-                              <span>Lessons: {course.lessons?.length || 0}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm text-gray-500">
-                              <span>Price: ${course.price}</span>
-                              <span>Duration: {course.duration}h</span>
-                            </div>
-                            <div className="flex space-x-2 pt-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => onNavigate(`/course/${course.id}`)}
-                                className="flex-1"
-                              >
-                                <BookOpen className="w-4 h-4 mr-1" />
-                                View
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => onNavigate(`/edit-course/${course.id}`)}
-                                className="flex-1"
-                              >
-                                <Edit className="w-4 h-4 mr-1" />
-                                Edit
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDeleteCourse(course.id)}
-                                disabled={deletingCourse === course.id}
-                              >
-                                {deletingCourse === course.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-4 h-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="recent" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent User Signups</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {stats?.recentSignups && stats.recentSignups.length > 0 ? (
-                  <div className="space-y-4">
-                    {stats.recentSignups.map((user) => (
-                      <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                            {user.photoURL ? (
-                              <img src={user.photoURL} alt={user.displayName} className="w-10 h-10 rounded-full" />
-                            ) : (
-                              <span className="text-sm font-medium">
-                                {user.displayName?.charAt(0) || user.email?.charAt(0) || '?'}
-                              </span>
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium">{user.displayName || 'No name'}</p>
-                            <p className="text-sm text-gray-500">{user.email}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge className={getRoleColor(user.role)}>
-                            {user.role}
-                          </Badge>
-                          <span className="text-sm text-gray-500">
-                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    No recent signups to display.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="settings" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>System Settings</CardTitle>
-                <p className="text-sm text-gray-600">Manage system-wide settings and configurations</p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h3 className="font-medium">Database Status</h3>
-                      <p className="text-sm text-gray-500">Firestore connection status</p>
-                    </div>
-                    <Badge className="bg-green-100 text-green-800">Connected</Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h3 className="font-medium">User Registration</h3>
-                      <p className="text-sm text-gray-500">Allow new user registrations</p>
-                    </div>
-                    <Badge className="bg-green-100 text-green-800">Enabled</Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h3 className="font-medium">System Maintenance</h3>
-                      <p className="text-sm text-gray-500">Current system status</p>
-                    </div>
-                    <Badge className="bg-green-100 text-green-800">Operational</Badge>
-                  </div>
-                  
-                  <div className="border-t pt-4">
-                    <h3 className="font-medium text-lg mb-4">Admin User Management</h3>
-                    
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <h4 className="font-medium">Remove Temporary Admin</h4>
-                        <p className="text-sm text-gray-500">
-                          Remove the temporary admin user (admin@dataridythmacademy.com) if it was created for testing
+                  </CardHeader>
+                  <CardContent>
+                    {filteredUsers.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>User</TableHead>
+                            <TableHead>Role</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Joined</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredUsers.map((user) => (
+                            <TableRow key={user.id}>
+                              <TableCell>
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                                    {user.displayName?.charAt(0) || user.email.charAt(0)}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{user.displayName || 'No name'}</p>
+                                    <p className="text-sm text-gray-500">{user.email}</p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={getRoleColor(user.role)}>
+                                  {user.role}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={getStatusColor(user.profileStatus || 'active')}>
+                                  {user.profileStatus || 'active'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {new Date(user.createdAt).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setShowUserModal(true);
+                                    }}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Users Found</h3>
+                        <p className="text-gray-600 mb-4">
+                          {users.length === 0 
+                            ? "No users have been registered yet in Firestore."
+                            : "No users match your current search criteria."
+                          }
                         </p>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        onClick={handleRemoveTemporaryAdmin}
-                        disabled={updatingUser === 'temp-admin'}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        {updatingUser === 'temp-admin' ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          'Remove Temp Admin'
+                        {users.length === 0 && (
+                          <Alert className="max-w-md mx-auto">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription>
+                              Users will appear here once they register through the application.
+                            </AlertDescription>
+                          </Alert>
                         )}
-                      </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Analytics Tab */}
+              <TabsContent value="analytics" className="space-y-6">
+                {/* Analytics Header */}
+                <div className="p-6 lg:p-8 bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 rounded-xl border border-purple-100 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">Analytics & Insights</h2>
+                      <p className="text-gray-600 text-sm lg:text-base">Monitor platform performance, user engagement, and business metrics in real-time</p>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-purple-600 bg-white px-4 py-2 rounded-lg shadow-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="font-medium">Live Data</span>
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+
+                {/* Analytics Stats Grid - 2x2 Layout for Better Mobile Experience */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 mb-8">
+                  {/* Row 1 */}
+                  <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center mb-2">
+                            <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                              <TrendingUp className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <p className="text-sm font-medium text-gray-600">Course Views</p>
+                          </div>
+                          <p className="text-3xl font-bold text-gray-900 mb-1">12,847</p>
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                            <p className="text-xs text-green-600 font-medium">+15.3% from last month</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-green-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center mb-2">
+                            <div className="p-2 bg-green-100 rounded-lg mr-3">
+                              <Users className="h-6 w-6 text-green-600" />
+                            </div>
+                            <p className="text-sm font-medium text-gray-600">New Enrollments</p>
+                          </div>
+                          <p className="text-3xl font-bold text-gray-900 mb-1">{enrollments.length}</p>
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                            <p className="text-xs text-green-600 font-medium">+8.7% from last month</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Row 2 */}
+                  <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-purple-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center mb-2">
+                            <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                              <BookOpen className="h-6 w-6 text-purple-600" />
+                            </div>
+                            <p className="text-sm font-medium text-gray-600">Course Completion</p>
+                          </div>
+                          <p className="text-3xl font-bold text-gray-900 mb-1">84.2%</p>
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                            <p className="text-xs text-green-600 font-medium">+2.1% from last month</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-yellow-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center mb-2">
+                            <div className="p-2 bg-yellow-100 rounded-lg mr-3">
+                              <DollarSign className="h-6 w-6 text-yellow-600" />
+                            </div>
+                            <p className="text-sm font-medium text-gray-600">Revenue</p>
+                          </div>
+                          <p className="text-3xl font-bold text-gray-900 mb-1">₹2,45,890</p>
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                            <p className="text-xs text-green-600 font-medium">+12.4% from last month</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="hover:shadow-lg transition-all duration-300">
+                  <CardHeader className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-t-lg">
+                    <CardTitle className="flex items-center text-xl font-semibold">
+                      <BarChart3 className="w-6 h-6 mr-3 text-blue-600" />
+                      Analytics Overview
+                    </CardTitle>
+                    <p className="text-gray-600 mt-2">Comprehensive insights into platform performance and user behavior</p>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-6">
+                      <Alert className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                        <TrendingUp className="h-5 w-5 text-blue-600" />
+                        <AlertDescription className="text-blue-800">
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                            <span className="font-medium">Advanced analytics dashboard is being developed with real-time data visualization.</span>
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 w-fit">Coming Soon</Badge>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
+                        <div className="p-5 border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all duration-300 bg-gradient-to-br from-white to-blue-50">
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                            <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                              <Activity className="w-5 h-5 text-blue-600" />
+                            </div>
+                            User Activity
+                          </h4>
+                          <p className="text-sm text-gray-600 leading-relaxed">Track user engagement, course progress, and learning patterns with detailed behavioral analytics.</p>
+                        </div>
+                        <div className="p-5 border border-gray-200 rounded-xl hover:border-green-300 hover:shadow-md transition-all duration-300 bg-gradient-to-br from-white to-green-50">
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                            <div className="p-2 bg-green-100 rounded-lg mr-3">
+                              <BookOpen className="w-5 h-5 text-green-600" />
+                            </div>
+                            Course Performance
+                          </h4>
+                          <p className="text-sm text-gray-600 leading-relaxed">Monitor course enrollment, completion rates, user feedback and instructor performance metrics.</p>
+                        </div>
+                        <div className="p-5 border border-gray-200 rounded-xl hover:border-yellow-300 hover:shadow-md transition-all duration-300 bg-gradient-to-br from-white to-yellow-50">
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                            <div className="p-2 bg-yellow-100 rounded-lg mr-3">
+                              <DollarSign className="w-5 h-5 text-yellow-600" />
+                            </div>
+                            Revenue Insights
+                          </h4>
+                          <p className="text-sm text-gray-600 leading-relaxed">Analyze payment trends, subscription metrics, financial growth and revenue forecasting.</p>
+                        </div>
+                        <div className="p-5 border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-md transition-all duration-300 bg-gradient-to-br from-white to-purple-50">
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                            <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                              <Shield className="w-5 h-5 text-purple-600" />
+                            </div>
+                            System Health
+                          </h4>
+                          <p className="text-sm text-gray-600 leading-relaxed">Monitor platform performance, error rates, uptime and user experience metrics in real-time.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* System Settings Tab */}
+              <TabsContent value="settings" className="space-y-6">
+                {/* Settings Header */}
+                <div className="p-6 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border">
+                  <h2 className="text-2xl font-bold text-gray-900">System Settings</h2>
+                  <p className="text-gray-600 mt-1">Configure platform settings, integrations, and system preferences</p>
+                </div>
+
+                {/* Course Creation Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      Course Creation
+                      <Button onClick={() => setShowCreateCourseModal(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create New Course
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">Create new courses and assign them to instructors.</p>
+                  </CardContent>
+                </Card>
+
+                {/* Unique ID Management Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Unique ID Management</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600 mb-4">Manage instructor and student unique IDs (DRA-INS-25xxx, DRA-STU-25xxx format).</p>
+                    
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <h4 className="font-medium">Instructors</h4>
+                          <div className="max-h-40 overflow-y-auto space-y-2">
+                            {users.filter(u => u.role === 'instructor').map(instructor => (
+                              <div key={instructor.id} className="flex items-center justify-between p-2 border rounded">
+                                <div>
+                                  <p className="font-medium text-sm">{instructor.displayName}</p>
+                                  <p className="text-xs text-gray-500">{instructor.uniqueId || 'No ID assigned'}</p>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleOpenUniqueIdModal(instructor)}
+                                >
+                                  <Edit className="w-3 h-3 mr-1" />
+                                  Edit ID
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <h4 className="font-medium">Students</h4>
+                          <div className="max-h-40 overflow-y-auto space-y-2">
+                            {users.filter(u => u.role === 'student').map(student => (
+                              <div key={student.id} className="flex items-center justify-between p-2 border rounded">
+                                <div>
+                                  <p className="font-medium text-sm">{student.displayName}</p>
+                                  <p className="text-xs text-gray-500">{student.uniqueId || 'No ID assigned'}</p>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleOpenUniqueIdModal(student)}
+                                >
+                                  <Edit className="w-3 h-3 mr-1" />
+                                  Edit ID
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* System Configuration */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>System Configuration</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Email Settings</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-gray-600 text-sm">Configure system email notifications and templates.</p>
+                          <Button className="mt-3" variant="outline" size="sm">
+                            <Mail className="w-4 h-4 mr-2" />
+                            Configure Email
+                          </Button>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Payment Settings</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-gray-600 text-sm">Manage payment gateway configuration and pricing.</p>
+                          <Button className="mt-3" variant="outline" size="sm">
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            Configure Payments
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
       </div>
+
+      {/* Course Edit Modal */}
+      <Dialog open={showCourseEditModal} onOpenChange={setShowCourseEditModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Course Enrollment Type</DialogTitle>
+          </DialogHeader>
+          
+          {selectedCourseForEdit && (
+            <div className="space-y-6">
+              {/* Course Info */}
+              <div className="flex items-start space-x-4">
+                <img 
+                  src={selectedCourseForEdit.thumbnailUrl} 
+                  alt={selectedCourseForEdit.title}
+                  className="w-20 h-20 object-cover rounded-lg"
+                />
+                <div>
+                  <h3 className="font-semibold text-lg">{selectedCourseForEdit.title}</h3>
+                  <p className="text-gray-600">By {selectedCourseForEdit.instructorName}</p>
+                  <p className="text-sm text-gray-500 mt-1">₹{selectedCourseForEdit.price.toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* Enrollment Type Selection */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Enrollment Type</label>
+                  <Select 
+                    value={selectedCourseForEdit.enrollmentType} 
+                    onValueChange={(value: 'direct' | 'enquiry') => 
+                      setSelectedCourseForEdit(prev => prev ? {...prev, enrollmentType: value} : null)
+                    }
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="direct">Direct Enrollment</SelectItem>
+                      <SelectItem value="enquiry">Inquiry Based</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Explanation */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-sm mb-2">
+                    {selectedCourseForEdit.enrollmentType === 'direct' ? 'Direct Enrollment' : 'Inquiry Based'}
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    {selectedCourseForEdit.enrollmentType === 'direct' 
+                      ? 'Students will see an "Enroll Now" button and can proceed directly to payment.'
+                      : 'Students will see a "Contact Us" button and will be redirected to the contact page for course inquiries.'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCourseEditModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (selectedCourseForEdit) {
+                  handleUpdateCourseEnrollmentType(selectedCourseForEdit.id, selectedCourseForEdit.enrollmentType);
+                }
+              }}
+              disabled={updatingCourse}
+            >
+              {updatingCourse ? 'Updating...' : 'Update Course'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Edit Modal - Simplified */}
+      <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4">
+              <div>
+                <p className="font-medium">{selectedUser.displayName}</p>
+                <p className="text-sm text-gray-500">{selectedUser.email}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Role</label>
+                <Select 
+                  value={selectedUser.role} 
+                  onValueChange={(value: 'student' | 'instructor' | 'admin') => 
+                    handleRoleChange(selectedUser.id, value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="instructor">Instructor</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select 
+                  value={selectedUser.profileStatus || 'active'} 
+                  onValueChange={(value: 'active' | 'suspended' | 'pending') => 
+                    handleStatusChange(selectedUser.id, value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button variant="outline" onClick={() => setShowUserModal(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Unique ID Assignment Modal */}
+      <Dialog open={showUniqueIdModal} onOpenChange={setShowUniqueIdModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Unique ID</DialogTitle>
+          </DialogHeader>
+          {selectedUserForId && (
+            <div className="space-y-4">
+              <div>
+                <p className="font-medium">{selectedUserForId.displayName}</p>
+                <p className="text-sm text-gray-500">{selectedUserForId.email}</p>
+                <Badge className="mt-1" variant="outline">
+                  {selectedUserForId.role === 'instructor' ? 'Instructor' : 'Student'}
+                </Badge>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Unique ID ({selectedUserForId.role === 'instructor' ? 'DRA-INS-25xxx format' : 'DRA-STU-25xxx format'})
+                </label>
+                <div className="flex space-x-2">
+                  <Input
+                    value={newUniqueId}
+                    onChange={(e) => setNewUniqueId(e.target.value)}
+                    placeholder={selectedUserForId.role === 'instructor' ? 'DRA-INS-25001' : 'DRA-STU-25001'}
+                  />
+                  <Button variant="outline" onClick={handleGenerateUniqueId}>
+                    Generate
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button variant="outline" onClick={() => setShowUniqueIdModal(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleAssignUniqueId}
+                  disabled={assigningUniqueId || !newUniqueId.trim()}
+                >
+                  {assigningUniqueId ? 'Assigning...' : 'Assign ID'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Course Creation Modal */}
+      <Dialog open={showCreateCourseModal} onOpenChange={setShowCreateCourseModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Course</DialogTitle>
+          </DialogHeader>
+          <CourseCreationForm
+            availableInstructors={availableInstructors}
+            onSubmit={handleCreateCourse}
+            onCancel={() => setShowCreateCourseModal(false)}
+            isCreating={creatingCourse}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+};
+
+// Course Creation Form Component
+interface CourseCreationFormProps {
+  availableInstructors: User[];
+  onSubmit: (courseData: any) => void;
+  onCancel: () => void;
+  isCreating: boolean;
+}
+
+const CourseCreationForm: React.FC<CourseCreationFormProps> = ({ 
+  availableInstructors, 
+  onSubmit, 
+  onCancel, 
+  isCreating 
+}) => {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    shortDescription: '',
+    instructorId: '',
+    category: '',
+    level: '',
+    language: 'English',
+    price: 0,
+    duration: 0,
+    thumbnailUrl: '',
+    learningObjectives: [''],
+    prerequisites: [''],
+    tags: ''
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const courseData = {
+      ...formData,
+      learningObjectives: formData.learningObjectives.filter(obj => obj.trim() !== ''),
+      prerequisites: formData.prerequisites.filter(req => req.trim() !== ''),
+      tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
+      instructorName: availableInstructors.find(i => i.id === formData.instructorId)?.displayName || 'Unknown Instructor'
+    };
+    
+    onSubmit(courseData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium">Course Title</label>
+          <Input
+            value={formData.title}
+            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            placeholder="Enter course title"
+            required
+          />
+        </div>
+        
+        <div>
+          <label className="text-sm font-medium">Assign to Instructor</label>
+          <Select value={formData.instructorId} onValueChange={(value) => setFormData(prev => ({ ...prev, instructorId: value }))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select instructor" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableInstructors.map(instructor => (
+                <SelectItem key={instructor.id} value={instructor.id}>
+                  {instructor.displayName} ({instructor.uniqueId || instructor.email})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">Short Description</label>
+        <Input
+          value={formData.shortDescription}
+          onChange={(e) => setFormData(prev => ({ ...prev, shortDescription: e.target.value }))}
+          placeholder="Brief course description"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">Full Description</label>
+        <Textarea
+          value={formData.description}
+          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+          placeholder="Detailed course description"
+          rows={4}
+          required
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="text-sm font-medium">Category</label>
+          <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Data Science">Data Science</SelectItem>
+              <SelectItem value="Web Development">Web Development</SelectItem>
+              <SelectItem value="Mobile Development">Mobile Development</SelectItem>
+              <SelectItem value="Machine Learning">Machine Learning</SelectItem>
+              <SelectItem value="Python">Python</SelectItem>
+              <SelectItem value="Design">Design</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Level</label>
+          <Select value={formData.level} onValueChange={(value) => setFormData(prev => ({ ...prev, level: value }))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select level" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Beginner">Beginner</SelectItem>
+              <SelectItem value="Intermediate">Intermediate</SelectItem>
+              <SelectItem value="Advanced">Advanced</SelectItem>
+              <SelectItem value="Expert">Expert</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Language</label>
+          <Input
+            value={formData.language}
+            onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
+            placeholder="Course language"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium">Price (₹)</label>
+          <Input
+            type="number"
+            value={formData.price}
+            onChange={(e) => setFormData(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+            placeholder="Course price"
+            min="0"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Duration (hours)</label>
+          <Input
+            type="number"
+            value={formData.duration}
+            onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
+            placeholder="Course duration"
+            min="0"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end space-x-2 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isCreating}>
+          {isCreating ? 'Creating...' : 'Create Course'}
+        </Button>
+      </div>
+    </form>
   );
 };
