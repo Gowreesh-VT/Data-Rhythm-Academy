@@ -166,14 +166,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
 
 
   const handleUpdateCourseEnrollmentType = async (courseId: string, enrollmentType: 'direct' | 'enquiry') => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      showError('Authentication Error', 'You must be logged in as an admin');
+      return;
+    }
     
     setUpdatingCourse(true);
     try {
       const result = await updateCourse(courseId, { enrollmentType }, user.id);
       
       if (result.error) {
-        showError('Update Failed', 'Failed to update course enrollment type');
+        showError('Update Failed', result.error.message || 'Failed to update course enrollment type');
         return;
       }
       
@@ -182,12 +185,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
         course.id === courseId ? { ...course, enrollmentType } : course
       ));
       
-      success('Course Updated', 'Enrollment type updated successfully');
+      // Update selectedCourseForEdit if it's the same course
+      if (selectedCourseForEdit && selectedCourseForEdit.id === courseId) {
+        setSelectedCourseForEdit({ ...selectedCourseForEdit, enrollmentType });
+      }
+      
+      success('Course Updated', `Enrollment type changed to "${enrollmentType}" successfully`);
       setShowCourseEditModal(false);
       
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error updating course:', error);
-      showError('Update Failed', 'An unexpected error occurred');
+      showError('Update Failed', error.message || 'An unexpected error occurred');
     } finally {
       setUpdatingCourse(false);
     }
@@ -201,18 +209,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
   };
   
   const handleGenerateUniqueId = async () => {
-    if (!selectedUserForId) return;
+    if (!selectedUserForId) {
+      showError('Error', 'No user selected');
+      return;
+    }
+    
+    if (selectedUserForId.role !== 'instructor' && selectedUserForId.role !== 'student') {
+      showError('Invalid Role', 'Unique IDs can only be generated for instructors and students');
+      return;
+    }
     
     try {
       const generatedId = await generateUniqueId(selectedUserForId.role as 'instructor' | 'student');
       setNewUniqueId(generatedId);
-    } catch (error) {
-      showError('Generation Failed', 'Failed to generate unique ID');
+      success('Generated', `Unique ID generated: ${generatedId}`);
+    } catch (error: any) {
+      logger.error('Error generating unique ID:', error);
+      showError('Generation Failed', error.message || 'Failed to generate unique ID');
     }
   };
   
   const handleAssignUniqueId = async () => {
-    if (!selectedUserForId || !user?.id || !newUniqueId.trim()) return;
+    if (!selectedUserForId) {
+      showError('Error', 'No user selected');
+      return;
+    }
+    
+    if (!user?.id) {
+      showError('Authentication Error', 'You must be logged in as an admin');
+      return;
+    }
+    
+    if (!newUniqueId.trim()) {
+      showError('Validation Error', 'Please enter a unique ID or click Generate');
+      return;
+    }
     
     setAssigningUniqueId(true);
     try {
@@ -220,12 +251,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
       if (result.error) {
         showError('Assignment Failed', result.error.message);
       } else {
-        success('Success', 'Unique ID assigned successfully');
+        success('Success', `Unique ID ${newUniqueId} assigned to ${selectedUserForId.displayName}`);
         setShowUniqueIdModal(false);
+        setSelectedUserForId(null);
+        setNewUniqueId('');
         loadAdminData(); // Refresh data
       }
-    } catch (error) {
-      showError('Assignment Failed', 'Failed to assign unique ID');
+    } catch (error: any) {
+      logger.error('Error assigning unique ID:', error);
+      showError('Assignment Failed', error.message || 'Failed to assign unique ID');
     } finally {
       setAssigningUniqueId(false);
     }
@@ -233,7 +267,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
   
   // Course creation handlers
   const handleCreateCourse = async (courseData: any) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      showError('Authentication Error', 'You must be logged in as an admin');
+      return;
+    }
+    
+    // Validate required fields
+    if (!courseData.title || !courseData.instructorId || !courseData.category) {
+      showError('Validation Error', 'Please fill in all required fields (Title, Instructor, Category)');
+      return;
+    }
     
     setCreatingCourse(true);
     try {
@@ -273,12 +316,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
       if (result.error) {
         showError('Creation Failed', result.error.message);
       } else {
-        success('Success', 'Course created successfully');
+        success('Success', `Course "${courseData.title}" created successfully`);
         setShowCreateCourseModal(false);
         loadCoursesData(); // Refresh courses
       }
-    } catch (error) {
-      showError('Creation Failed', 'Failed to create course');
+    } catch (error: any) {
+      logger.error('Error creating course:', error);
+      showError('Creation Failed', error.message || 'Failed to create course');
     } finally {
       setCreatingCourse(false);
     }
@@ -1052,7 +1096,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
       </div>
 
       {/* Course Edit Modal */}
-      <Dialog open={showCourseEditModal} onOpenChange={setShowCourseEditModal}>
+      <Dialog open={showCourseEditModal} onOpenChange={(open) => {
+        setShowCourseEditModal(open);
+        if (!open) {
+          setSelectedCourseForEdit(null);
+        }
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Course Enrollment Type</DialogTitle>
@@ -1129,7 +1178,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
       </Dialog>
 
       {/* User Edit Modal - Simplified */}
-      <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
+      <Dialog open={showUserModal} onOpenChange={(open) => {
+        setShowUserModal(open);
+        if (!open) {
+          setSelectedUser(null);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
@@ -1190,7 +1244,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
       </Dialog>
 
       {/* Unique ID Assignment Modal */}
-      <Dialog open={showUniqueIdModal} onOpenChange={setShowUniqueIdModal}>
+      <Dialog open={showUniqueIdModal} onOpenChange={(open) => {
+        setShowUniqueIdModal(open);
+        if (!open) {
+          // Reset state when modal closes
+          setSelectedUserForId(null);
+          setNewUniqueId('');
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Assign Unique ID</DialogTitle>
@@ -1287,6 +1348,32 @@ const CourseCreationForm: React.FC<CourseCreationFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.title.trim()) {
+      alert('Please enter a course title');
+      return;
+    }
+    if (!formData.instructorId) {
+      alert('Please select an instructor');
+      return;
+    }
+    if (!formData.category) {
+      alert('Please select a category');
+      return;
+    }
+    if (!formData.level) {
+      alert('Please select a difficulty level');
+      return;
+    }
+    if (!formData.shortDescription.trim()) {
+      alert('Please enter a short description');
+      return;
+    }
+    if (!formData.description.trim()) {
+      alert('Please enter a full description');
+      return;
+    }
     
     const courseData = {
       ...formData,
