@@ -189,6 +189,23 @@ export const getPublishedCourses = async () => {
   }
 };
 
+export const getAllCourses = async () => {
+  try {
+    // Get ALL courses from Firestore (for admin use)
+    const q = query(collection(db, 'courses'), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const allCourses: Course[] = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Course[];
+
+    return { data: allCourses };
+  } catch (error) {
+    logger.error('Error getting all courses:', error);
+    return { error: error as Error };
+  }
+};
+
 export const getInstructorCourses = async (instructorId: string) => {
   try {
     const q = query(

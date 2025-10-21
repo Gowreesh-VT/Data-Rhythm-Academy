@@ -109,13 +109,20 @@ function AppContent() {
 
   // Auto-redirect authenticated users from login/register pages to appropriate dashboard
   useEffect(() => {
+    console.log('App.tsx - useEffect - user:', user);
+    console.log('App.tsx - useEffect - pathname:', location.pathname);
+    console.log('App.tsx - useEffect - user role:', user?.role);
+    
     if (user && (location.pathname === '/login' || location.pathname === '/register')) {
       // Redirect based on user role
       if (user.role === 'admin') {
+        console.log('App.tsx - Redirecting admin to /admin-dashboard');
         navigate('/admin-dashboard');
       } else if (user.role === 'instructor') {
+        console.log('App.tsx - Redirecting instructor to /instructor-dashboard');
         navigate('/instructor-dashboard');
       } else {
+        console.log('App.tsx - Redirecting student to /my-courses');
         navigate('/my-courses'); // Default to student dashboard
       }
     }

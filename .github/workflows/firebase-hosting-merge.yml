@@ -17,4 +17,4 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DATA_RHYTHM_ACADEMY }}
           channelId: live
-          projectId: data-rhythm-academy
+          projectId: the-data-rhythm-academy
