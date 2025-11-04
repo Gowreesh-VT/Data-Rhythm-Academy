@@ -16,6 +16,7 @@ import { ClassTimetablePage } from "./components/class-management/ClassTimetable
 import { InstructorDashboard } from "./components/dashboard/InstructorDashboard";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { CourseDetailPage } from "./components/course/CourseDetailPage";
+import { CourseEnrollmentPage } from "./components/pages/CourseEnrollmentPage";
 import { LessonViewer } from "./components/course/LessonViewer";
 import { UserProfilePage } from "./components/dashboard/UserProfilePage";
 import { WishlistPage } from "./components/common/WishlistPage";
@@ -220,6 +221,14 @@ function AppContent() {
               onNavigate={handleNavigate}
               onLogout={handleLogout}
             />
+          </CourseErrorBoundary>
+        }
+      />
+      <Route
+        path="/course/:courseId/enroll"
+        element={
+          <CourseErrorBoundary onRetry={() => window.location.reload()} onGoBack={() => navigate('/courses')}>
+            <CourseEnrollmentPage />
           </CourseErrorBoundary>
         }
       />

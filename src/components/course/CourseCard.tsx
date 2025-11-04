@@ -101,6 +101,8 @@ export const CourseCard: React.FC<CourseCardProps> = ({
     return `${currency}${price}`;
   };
 
+  // Only one declaration for modal state
+  // Fallbacks for missing fields are handled in modal props below
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden">
       <div className="relative">
@@ -276,7 +278,14 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               </span>
             </div>
             <Button 
-              className="w-full bg-orange-600 hover:bg-orange-700" 
+              className="w-full font-semibold shadow-lg"
+              style={{ 
+                backgroundColor: '#000000ff', 
+                color: '#ffffff',
+                border: 'none'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#000000ff'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#000000ff'}
               onClick={() => onEnquire?.(course.id)}
             >
               <MessageCircle className="w-4 h-4 mr-2" />
@@ -293,7 +302,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </div>
             <Button 
               className="w-full" 
-              onClick={handlePaymentEnrollment}
+              onClick={() => onNavigate?.(`/course/${course.id}/enroll`)}
               disabled={isProcessing}
             >
               {isProcessing ? (

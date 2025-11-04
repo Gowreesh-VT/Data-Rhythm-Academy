@@ -1,5 +1,11 @@
 /// <reference types="vite/client" />
 
+// Image file type declarations
+declare module '*.jpeg';
+declare module '*.jpg';
+declare module '*.png';
+declare module '*.svg';
+
 interface ImportMetaEnv {
   readonly VITE_FIREBASE_API_KEY: string;
   readonly VITE_FIREBASE_AUTH_DOMAIN: string;

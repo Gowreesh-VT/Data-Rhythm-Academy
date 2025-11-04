@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { SimpleModal } from './ui/simple-modal';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -42,7 +43,8 @@ import {
   generateUniqueId,
   assignUniqueId,
   getAvailableInstructors,
-  createCourse
+  createCourse,
+  enrollInCourse
 } from '../lib/database';
 import { logger } from '../utils/logger';
 
@@ -86,10 +88,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
   const [newUniqueId, setNewUniqueId] = useState('');
   const [assigningUniqueId, setAssigningUniqueId] = useState(false);
 
-  // Refs to prevent auto-close on modal mount
-  const courseEditModalJustOpened = useRef(false);
-  const userModalJustOpened = useRef(false);
-  const createCourseModalJustOpened = useRef(false);
+  // Manual enrollment states
+  const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
+  const [enrollmentStudentId, setEnrollmentStudentId] = useState('');
+  const [enrollmentCourseId, setEnrollmentCourseId] = useState('');
+  const [enrollmentPaymentNote, setEnrollmentPaymentNote] = useState('');
+  const [enrollingStudent, setEnrollingStudent] = useState(false);
 
   // Load data on mount
   useEffect(() => {
@@ -346,6 +350,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
     }
   };
 
+  // Handle manual student enrollment
+  const handleManualEnrollment = async () => {
+    if (!enrollmentStudentId || !enrollmentCourseId) {
+      showError('Missing Information', 'Please select both student and course');
+      return;
+    }
+
+    try {
+      setEnrollingStudent(true);
+      
+      // Find student and course details
+      const student = users.find(u => u.id === enrollmentStudentId);
+      const course = courses.find(c => c.id === enrollmentCourseId);
+      
+      if (!student || !course) {
+        showError('Not Found', 'Student or course not found');
+        return;
+      }
+
+      // Enroll student with payment note
+      const paymentData = enrollmentPaymentNote ? {
+        paymentId: `MANUAL_${Date.now()}`,
+        amount: course.price,
+        currency: 'INR',
+        paymentMethod: 'QR Code / Manual',
+        note: enrollmentPaymentNote
+      } : undefined;
+
+      const result = await enrollInCourse(enrollmentStudentId, enrollmentCourseId, paymentData);
+      
+      if (result.error) {
+        showError('Enrollment Failed', result.error.message || 'Failed to enroll student');
+        return;
+      }
+
+      success(
+        'Student Enrolled', 
+        `${student.displayName || student.email} has been enrolled in ${course.title}`
+      );
+      
+      // Reset form
+      setEnrollmentStudentId('');
+      setEnrollmentCourseId('');
+      setEnrollmentPaymentNote('');
+      setShowEnrollmentModal(false);
+      
+    } catch (err) {
+      logger.error('Error enrolling student:', err);
+      showError('Enrollment Failed', 'An unexpected error occurred');
+    } finally {
+      setEnrollingStudent(false);
+    }
+  };
+
   // Handle unique ID assignment
   const handleAssignUniqueId = async () => {
     if (!selectedUserForId || !newUniqueId.trim()) {
@@ -516,7 +574,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
 
             {/* Main Content Tabs */}
             <Tabs defaultValue="courses" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
                 <TabsTrigger value="courses">
                   <BookOpen className="w-4 h-4 mr-2" />
                   Courses
@@ -524,6 +582,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
                 <TabsTrigger value="users">
                   <Users className="w-4 h-4 mr-2" />
                   Users
+                </TabsTrigger>
+                <TabsTrigger value="enrollments">
+                  <UserCheck className="w-4 h-4 mr-2" />
+                  Enrollments
                 </TabsTrigger>
                 <TabsTrigger value="analytics">
                   <BarChart3 className="w-4 h-4 mr-2" />
@@ -609,14 +671,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
                                   size="sm" 
                                   variant="outline" 
                                   className="w-full"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    console.log('Edit Enrollment Type clicked for course:', course.title);
-                                    console.log('Setting selectedCourseForEdit:', course);
+                                  onClick={() => {
                                     setSelectedCourseForEdit(course);
-                                    console.log('Opening modal...');
-                                    courseEditModalJustOpened.current = true;
                                     setShowCourseEditModal(true);
                                   }}
                                 >
@@ -747,9 +803,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
                                   <Button 
                                     size="sm" 
                                     variant="outline"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
+                                    onClick={() => {
                                       setSelectedUser(user);
                                       setShowUserModal(true);
                                     }}
@@ -774,6 +828,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
                         </p>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Enrollments Tab */}
+              <TabsContent value="enrollments" className="space-y-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                          <UserCheck className="w-6 h-6 mr-2 text-green-600" />
+                          Manual Enrollment
+                        </h2>
+                        <p className="text-gray-600 mt-1">Enroll students after QR code payment verification</p>
+                      </div>
+                      <Button 
+                        onClick={() => setShowEnrollmentModal(true)}
+                        className="bg-green-600 hover:bg-green-700 text-white w-full md:w-auto shadow-lg hover:shadow-xl transition-shadow"
+                        size="lg"
+                      >
+                        <Plus className="w-5 h-5 mr-2" />
+                        Enroll Student
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Enrollment Instructions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
+                      <h4 className="font-semibold text-blue-900 mb-2">How to Manually Enroll Students</h4>
+                      <ol className="text-sm text-blue-800 space-y-2 ml-4 list-decimal">
+                        <li>Student makes payment via QR code and sends screenshot to WhatsApp (+91-9444279287)</li>
+                        <li>Verify the payment screenshot and amount</li>
+                        <li>Click "Enroll Student" button above</li>
+                        <li>Select the student from the dropdown</li>
+                        <li>Select the course they paid for</li>
+                        <li>Add payment reference/note (optional)</li>
+                        <li>Click "Enroll" - the student will immediately get access to the course</li>
+                      </ol>
+                    </div>
+
+                    <div className="bg-green-50 border-l-4 border-green-600 p-4 rounded">
+                      <h4 className="font-semibold text-green-900 mb-2">What Happens After Enrollment?</h4>
+                      <ul className="text-sm text-green-800 space-y-1 ml-4 list-disc">
+                        <li>Student gets instant access to course materials</li>
+                        <li>Course appears in their "My Courses" dashboard</li>
+                        <li>Student is added to scheduled classes automatically</li>
+                        <li>Enrollment record is created with payment details</li>
+                      </ul>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <Users className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+                        <p className="text-sm font-medium text-gray-900">{users.filter(u => u.role === 'student').length}</p>
+                        <p className="text-xs text-gray-600">Total Students</p>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <BookOpen className="w-8 h-8 mx-auto mb-2 text-green-600" />
+                        <p className="text-sm font-medium text-gray-900">{courses.length}</p>
+                        <p className="text-xs text-gray-600">Available Courses</p>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <CreditCard className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+                        <p className="text-sm font-medium text-gray-900">Manual</p>
+                        <p className="text-xs text-gray-600">Payment Method</p>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -847,318 +974,376 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLo
       </div>
 
       {/* Course Edit Modal */}
-      <Dialog 
-        open={showCourseEditModal} 
-        onOpenChange={(open) => {
-          console.log('Course Edit Modal onOpenChange - open:', open, 'current state:', showCourseEditModal, 'justOpened:', courseEditModalJustOpened.current);
-          
-          // If the modal was just opened and this is a close event, ignore it
-          if (courseEditModalJustOpened.current && !open) {
-            console.log('Ignoring auto-close on mount');
-            courseEditModalJustOpened.current = false;
-            return;
-          }
-          
-          console.log('Setting showCourseEditModal to:', open);
-          setShowCourseEditModal(open);
-          if (!open) {
-            console.log('Clearing selectedCourseForEdit');
-            setSelectedCourseForEdit(null);
-            courseEditModalJustOpened.current = false;
-          }
+      <SimpleModal
+        isOpen={showCourseEditModal}
+        onClose={() => {
+          setShowCourseEditModal(false);
+          setSelectedCourseForEdit(null);
         }}
+        title="Edit Course Enrollment Type"
+        description="Change how students can enroll in this course - either directly or by inquiry"
+        maxWidth="700px"
       >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Course Enrollment Type</DialogTitle>
-            <DialogDescription>
-              Change how students can enroll in this course - either directly or by inquiry
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedCourseForEdit && (
-            <div className="space-y-6">
-              <div className="flex items-start space-x-4">
-                <ImageWithFallback
-                  src={selectedCourseForEdit.thumbnailUrl} 
-                  alt={selectedCourseForEdit.title}
-                  className="w-20 h-20 object-cover rounded-lg"
-                />
-                <div>
-                  <h3 className="font-semibold text-lg">{selectedCourseForEdit.title}</h3>
-                  <p className="text-gray-600">By {selectedCourseForEdit.instructorName}</p>
-                  <p className="text-sm text-gray-500 mt-1">₹{selectedCourseForEdit.price.toLocaleString()}</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Enrollment Type</label>
-                  <Select 
-                    value={selectedCourseForEdit.enrollmentType} 
-                    onValueChange={(value: 'direct' | 'enquiry') => 
-                      setSelectedCourseForEdit(prev => prev ? {...prev, enrollmentType: value} : null)
-                    }
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="direct">Direct Enrollment</SelectItem>
-                      <SelectItem value="enquiry">Inquiry Based</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-sm mb-2">
-                    {selectedCourseForEdit.enrollmentType === 'direct' ? 'Direct Enrollment' : 'Inquiry Based'}
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    {selectedCourseForEdit.enrollmentType === 'direct' 
-                      ? 'Students will see an "Enroll Now" button and can proceed directly to payment.'
-                      : 'Students will see a "Contact Us" button and will be redirected to the contact page for course inquiries.'
-                    }
-                  </p>
-                </div>
+        {selectedCourseForEdit && (
+          <div className="space-y-6">
+            <div className="flex items-start space-x-4">
+              <ImageWithFallback
+                src={selectedCourseForEdit.thumbnailUrl} 
+                alt={selectedCourseForEdit.title}
+                className="w-20 h-20 object-cover rounded-lg"
+              />
+              <div>
+                <h3 className="font-semibold text-lg">{selectedCourseForEdit.title}</h3>
+                <p className="text-gray-600">By {selectedCourseForEdit.instructorName}</p>
+                <p className="text-sm text-gray-500 mt-1">₹{selectedCourseForEdit.price.toLocaleString()}</p>
               </div>
             </div>
-          )}
-          
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowCourseEditModal(false);
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Enrollment Type</label>
+                <Select 
+                  value={selectedCourseForEdit.enrollmentType} 
+                  onValueChange={(value: 'direct' | 'enquiry') => 
+                    setSelectedCourseForEdit(prev => prev ? {...prev, enrollmentType: value} : null)
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="direct">Direct Enrollment</SelectItem>
+                    <SelectItem value="enquiry">Inquiry Based</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-sm mb-2">
+                  {selectedCourseForEdit.enrollmentType === 'direct' ? 'Direct Enrollment' : 'Inquiry Based'}
+                </h4>
+                <p className="text-sm text-gray-600">
+                  {selectedCourseForEdit.enrollmentType === 'direct' 
+                    ? 'Students will see an "Enroll Now" button and can proceed directly to payment.'
+                    : 'Students will see a "Contact Us" button and will be redirected to the contact page for course inquiries.'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowCourseEditModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (selectedCourseForEdit) {
+                    handleUpdateCourseEnrollmentType(selectedCourseForEdit.id, selectedCourseForEdit.enrollmentType);
+                  }
+                }}
+                disabled={updatingCourse}
+              >
+                {updatingCourse ? 'Updating...' : 'Update Course'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </SimpleModal>
+
+      {/* User Edit Modal */}
+      <SimpleModal
+        isOpen={showUserModal}
+        onClose={() => {
+          setShowUserModal(false);
+          setSelectedUser(null);
+        }}
+        title="Edit User"
+        description="Update user role and account status"
+        maxWidth="500px"
+      >
+        {selectedUser && (
+          <div className="space-y-4">
+            <div>
+              <p className="font-medium">{selectedUser.displayName}</p>
+              <p className="text-sm text-gray-500">{selectedUser.email}</p>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Role</label>
+              <Select 
+                value={selectedUser.role} 
+                onValueChange={(value: 'student' | 'instructor' | 'admin') => 
+                  handleRoleChange(selectedUser.id, value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">Student</SelectItem>
+                  <SelectItem value="instructor">Instructor</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <Select 
+                value={selectedUser.profileStatus || 'active'} 
+                onValueChange={(value: 'active' | 'suspended' | 'pending') => 
+                  handleStatusChange(selectedUser.id, value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button variant="outline" onClick={() => setShowUserModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+      </SimpleModal>
+
+      {/* Create Course Modal */}
+      <SimpleModal
+        isOpen={showCreateCourseModal}
+        onClose={() => setShowCreateCourseModal(false)}
+        title="Create New Course"
+        description="Add a new course to the platform"
+        maxWidth="800px"
+      >
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          const formData = new FormData(e.currentTarget);
+          handleCreateCourse({
+            title: formData.get('title'),
+            description: formData.get('description'),
+            price: formData.get('price'),
+            duration: formData.get('duration'),
+            level: formData.get('level'),
+            category: formData.get('category'),
+            instructorId: formData.get('instructorId'),
+            thumbnailUrl: formData.get('thumbnailUrl'),
+            learningObjectives: formData.get('learningObjectives'),
+            prerequisites: formData.get('prerequisites'),
+            tags: formData.get('tags'),
+          });
+        }}>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Course Title *</label>
+              <Input name="title" placeholder="e.g., Python for Beginners" required />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Description *</label>
+              <Textarea 
+                name="description" 
+                placeholder="Describe what students will learn..." 
+                rows={3}
+                required 
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Price (₹) *</label>
+                <Input name="price" type="number" placeholder="1999" required />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Duration</label>
+                <Input name="duration" placeholder="8 weeks" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Level</label>
+                <Select name="level" defaultValue="beginner">
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Category</label>
+                <Input name="category" placeholder="Programming" />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Instructor *</label>
+              <Select name="instructorId" required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select instructor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableInstructors.map((instructor) => (
+                    <SelectItem key={instructor.id} value={instructor.id}>
+                      {instructor.displayName || instructor.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Thumbnail URL</label>
+              <Input name="thumbnailUrl" placeholder="https://..." />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Learning Objectives (one per line)</label>
+              <Textarea 
+                name="learningObjectives" 
+                placeholder="Master Python basics&#10;Build web applications&#10;Understand OOP concepts"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Prerequisites (one per line)</label>
+              <Textarea 
+                name="prerequisites" 
+                placeholder="Basic computer skills&#10;Willingness to learn"
+                rows={2}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Tags (comma-separated)</label>
+              <Input name="tags" placeholder="python, programming, web development" />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-6">
+            <Button type="button" variant="outline" onClick={() => setShowCreateCourseModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={creatingCourse}>
+              {creatingCourse ? 'Creating...' : 'Create Course'}
+            </Button>
+          </div>
+        </form>
+      </SimpleModal>
+
+      {/* Manual Enrollment Modal */}
+      <SimpleModal
+        isOpen={showEnrollmentModal}
+        onClose={() => {
+          setShowEnrollmentModal(false);
+          setEnrollmentStudentId('');
+          setEnrollmentCourseId('');
+          setEnrollmentPaymentNote('');
+        }}
+        title="Enroll Student Manually"
+        description="Enroll a student after verifying their QR code payment"
+        maxWidth="600px"
+      >
+        <div className="space-y-4">
+          <div className="bg-yellow-50 border-l-4 border-yellow-600 p-4 rounded mb-4">
+            <p className="text-sm text-yellow-800">
+              <strong>Note:</strong> Use this after verifying the student's payment screenshot on WhatsApp
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Select Student</label>
+            <Select value={enrollmentStudentId} onValueChange={setEnrollmentStudentId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a student..." />
+              </SelectTrigger>
+              <SelectContent>
+                {users
+                  .filter(u => u.role === 'student')
+                  .map(student => (
+                    <SelectItem key={student.id} value={student.id}>
+                      {student.displayName || student.email} 
+                      {student.uniqueId && ` (${student.uniqueId})`}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500">
+              {users.filter(u => u.role === 'student').length} students available
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Select Course</label>
+            <Select value={enrollmentCourseId} onValueChange={setEnrollmentCourseId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a course..." />
+              </SelectTrigger>
+              <SelectContent>
+                {courses.map(course => (
+                  <SelectItem key={course.id} value={course.id}>
+                    {course.title} - ₹{course.price}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500">
+              {courses.length} courses available
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Payment Reference / Note (Optional)</label>
+            <Textarea
+              value={enrollmentPaymentNote}
+              onChange={(e) => setEnrollmentPaymentNote(e.target.value)}
+              placeholder="e.g., Verified via WhatsApp screenshot on 2/11/2025, Transaction ID: 12345"
+              rows={3}
+            />
+            <p className="text-xs text-gray-500">
+              Add any payment verification details for your records
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              onClick={() => {
+                setShowEnrollmentModal(false);
+                setEnrollmentStudentId('');
+                setEnrollmentCourseId('');
+                setEnrollmentPaymentNote('');
               }}
+              variant="outline"
+              className="flex-1"
+              disabled={enrollingStudent}
             >
               Cancel
             </Button>
-            <Button 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (selectedCourseForEdit) {
-                  handleUpdateCourseEnrollmentType(selectedCourseForEdit.id, selectedCourseForEdit.enrollmentType);
-                }
-              }}
-              disabled={updatingCourse}
+            <Button
+              onClick={handleManualEnrollment}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+              disabled={enrollingStudent || !enrollmentStudentId || !enrollmentCourseId}
             >
-              {updatingCourse ? 'Updating...' : 'Update Course'}
+              {enrollingStudent ? 'Enrolling...' : 'Enroll Student'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* User Edit Modal */}
-      <Dialog 
-        open={showUserModal} 
-        onOpenChange={(open) => {
-          setShowUserModal(open);
-          if (!open) {
-            setSelectedUser(null);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              Update user role and account status
-            </DialogDescription>
-          </DialogHeader>
-          {selectedUser && (
-            <div className="space-y-4">
-              <div>
-                <p className="font-medium">{selectedUser.displayName}</p>
-                <p className="text-sm text-gray-500">{selectedUser.email}</p>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Role</label>
-                <Select 
-                  value={selectedUser.role} 
-                  onValueChange={(value: 'student' | 'instructor' | 'admin') => 
-                    handleRoleChange(selectedUser.id, value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="instructor">Instructor</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Status</label>
-                <Select 
-                  value={selectedUser.profileStatus || 'active'} 
-                  onValueChange={(value: 'active' | 'suspended' | 'pending') => 
-                    handleStatusChange(selectedUser.id, value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={() => setShowUserModal(false)}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Create Course Modal */}
-      <Dialog 
-        open={showCreateCourseModal} 
-        onOpenChange={(open) => {
-          setShowCreateCourseModal(open);
-        }}
-      >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Course</DialogTitle>
-            <DialogDescription>
-              Add a new course to the platform
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            handleCreateCourse({
-              title: formData.get('title'),
-              description: formData.get('description'),
-              price: formData.get('price'),
-              duration: formData.get('duration'),
-              level: formData.get('level'),
-              category: formData.get('category'),
-              instructorId: formData.get('instructorId'),
-              thumbnailUrl: formData.get('thumbnailUrl'),
-              learningObjectives: formData.get('learningObjectives'),
-              prerequisites: formData.get('prerequisites'),
-              tags: formData.get('tags'),
-            });
-          }}>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Course Title *</label>
-                <Input name="title" placeholder="e.g., Python for Beginners" required />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Description *</label>
-                <Textarea 
-                  name="description" 
-                  placeholder="Describe what students will learn..." 
-                  rows={3}
-                  required 
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Price (₹) *</label>
-                  <Input name="price" type="number" placeholder="1999" required />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Duration</label>
-                  <Input name="duration" placeholder="8 weeks" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Level</label>
-                  <Select name="level" defaultValue="beginner">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="beginner">Beginner</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Category</label>
-                  <Input name="category" placeholder="Programming" />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Instructor *</label>
-                <Select name="instructorId" required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select instructor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableInstructors.map((instructor) => (
-                      <SelectItem key={instructor.id} value={instructor.id}>
-                        {instructor.displayName || instructor.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Thumbnail URL</label>
-                <Input name="thumbnailUrl" placeholder="https://..." />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Learning Objectives (one per line)</label>
-                <Textarea 
-                  name="learningObjectives" 
-                  placeholder="Master Python basics&#10;Build web applications&#10;Understand OOP concepts"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Prerequisites (one per line)</label>
-                <Textarea 
-                  name="prerequisites" 
-                  placeholder="Basic computer skills&#10;Willingness to learn"
-                  rows={2}
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Tags (comma-separated)</label>
-                <Input name="tags" placeholder="python, programming, web development" />
-              </div>
-            </div>
-
-            <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={() => setShowCreateCourseModal(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={creatingCourse}>
-                {creatingCourse ? 'Creating...' : 'Create Course'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      </SimpleModal>
 
       {/* Unique ID Assignment Modal */}
       <Dialog 
