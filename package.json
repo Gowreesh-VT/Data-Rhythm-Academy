@@ -64,9 +64,9 @@
     "vite-plugin-svgr": "^4.5.0"
   },
   "scripts": {
-    "dev": "node init && vite",
-    "build": "node init && vite build",
-    "build:prod": "node init && cp .env.production .env && vite build",
+    "dev": "vite",
+    "build": "vite build",
+    "build:prod": "cp .env.production .env && vite build",
     "preview": "vite preview",
     "deploy": "npm run build && npx firebase deploy",
     "deploy:test": "firebase use data-rhythm-test && cp .env.test .env && npm run build && firebase deploy --only hosting",
