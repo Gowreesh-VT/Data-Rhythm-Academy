@@ -29,5 +29,4 @@ dist-ssr
 
 # Supabase
 .supabase
-.env
-.env.local
+config.bat
